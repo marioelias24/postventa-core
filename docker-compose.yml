@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: postventa-db
+    environment:
+      POSTGRES_USER: postventa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postventa
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postventa -d postventa"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./api
+    container_name: postventa-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postventa:${POSTGRES_PASSWORD}@db:5432/postventa
+      AUTH_SECRET: ${AUTH_SECRET}
+      # Cambiar a "true" cuando el sitio sirva por HTTPS (Fase 3).
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      NODE_ENV: production
+      PORT: "3000"
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      # Persistencia de logos/archivos subidos. Sobrevive a rebuilds del api.
+      - uploads:/app/uploads
+    restart: unless-stopped
+
+  app:
+    build: .
+    container_name: postventa-app
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
+volumes:
+  db-data:
+  uploads:

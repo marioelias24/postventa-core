@@ -1,0 +1,24 @@
+{
+  "name": "postventa-api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "user:create": "node src/scripts/createUser.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
+  }
+}

@@ -1,0 +1,121 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  // Rol del usuario: admin | supervisor | tecnico | lectura.
+  // Default 'admin' para que los usuarios existentes antes de esta columna
+  // mantengan acceso total tras el `prisma db push` (migración aditiva).
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
+}
+
+// Datos generales de la organización. Es un singleton: usamos id=1.
+// Si la fila no existe, GET /api/empresa la crea con valores por defecto.
+model Empresa {
+  id        Int      @id @default(1)
+  nombre    String   @default("")
+  ruc       String?
+  telefono  String?
+  email     String?
+  direccion String?
+  // Path relativo dentro del volumen /app/uploads (ej. "logo-1715890000.png").
+  // El frontend lo sirve como /uploads/<logoFile>. Null = usar fallback.
+  logoFile  String?
+  updatedAt DateTime @updatedAt
+}
+
+model Tecnico {
+  id       Int     @id @default(autoincrement())
+  nombre   String
+  telefono String?
+  email    String?
+  activo   Boolean @default(true)
+  ordenes  Orden[]
+}
+
+model Cliente {
+  id             Int     @id @default(autoincrement())
+  nombre         String
+  contacto       String?
+  telefono       String?
+  email          String?
+  direccion      String?
+  lat            Float?
+  lng            Float?
+  contratoActivo Boolean @default(true)
+  notas          String?
+  ordenes        Orden[]
+}
+
+model Tipo {
+  id      Int     @id @default(autoincrement())
+  nombre  String
+  color   String
+  activo  Boolean @default(true)
+  ordenes Orden[]
+}
+
+model Estado {
+  id      Int     @id @default(autoincrement())
+  nombre  String
+  color   String
+  orden   Int     @default(1)
+  esFinal Boolean @default(false)
+  activo  Boolean @default(true)
+  ordenes Orden[]
+}
+
+model Prioridad {
+  id      Int     @id @default(autoincrement())
+  nombre  String
+  color   String
+  nivel   Int     @default(1)
+  ordenes Orden[]
+}
+
+model Orden {
+  id               Int      @id @default(autoincrement())
+  // El número de orden viene de SAP. Una misma orden puede tener varias filas
+  // (una por día/visita), así que NO es único. Si se necesita identificar una
+  // orden lógica completa, se agrupa por `numero` desde la consulta.
+  numero           String?
+  fechaProgramada  String
+  horaInicio       String
+  duracionEstimada Float
+  equipo           String
+  descripcion      String?
+  notas            String?
+  fechaCompletada  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Todos los campos de selección son opcionales: una orden puede quedar sin
+  // cliente / técnico / tipo / estado / prioridad. El bloqueo al borrar un
+  // catálogo que está en uso se mantiene con onDelete: Restrict.
+  clienteId   Int?
+  cliente     Cliente?   @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+
+  // Técnicos asignados (varios por orden, estilo "tags"). `tecnicoIds` es la
+  // fuente de verdad; `tecnicoId` se conserva como el técnico "principal"
+  // (= tecnicoIds[0]) para mantener la relación/onDelete y compatibilidad.
+  tecnicoIds  Int[]      @default([])
+  tecnicoId   Int?
+  tecnico     Tecnico?   @relation(fields: [tecnicoId], references: [id], onDelete: Restrict)
+
+  tipoId      Int?
+  tipo        Tipo?      @relation(fields: [tipoId], references: [id], onDelete: Restrict)
+  estadoId    Int?
+  estado      Estado?    @relation(fields: [estadoId], references: [id], onDelete: Restrict)
+  prioridadId Int?
+  prioridad   Prioridad? @relation(fields: [prioridadId], references: [id], onDelete: Restrict)
+}
