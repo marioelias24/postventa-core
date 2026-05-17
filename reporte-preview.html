@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Preview – Reporte de Servicio</title>
+<style>
+  body { margin: 0; background: #d1d5db; display: flex; justify-content: center; padding: 40px; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  .sheet {
+    width: 794px; background: #fff; padding: 40px;
+    font-size: 12px; color: #1a1a1a; box-shadow: 0 8px 40px rgba(0,0,0,.25);
+  }
+  /* Header */
+  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0f766e; padding-bottom: 20px; margin-bottom: 24px; }
+  .brand-name { font-size: 17px; font-weight: 700; }
+  .brand-sub  { font-size: 11px; color: #666; }
+  .report-label { font-size: 13px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 2px; text-align: right; }
+  .order-num    { font-size: 26px; font-weight: 800; color: #0f766e; line-height: 1.1; margin-top: 4px; }
+  .order-date   { font-size: 11px; color: #888; margin-top: 3px; }
+  /* Logo placeholder */
+  .logo-box { width: 52px; height: 52px; background: #0f766e; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; font-size: 22px; flex-shrink: 0; }
+  /* Grid */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; }
+  .card-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #0f766e; margin-bottom: 10px; }
+  .client-name { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .client-info { color: #555; margin-bottom: 3px; font-size: 12px; }
+  table.details { border-collapse: collapse; }
+  table.details td { padding-bottom: 5px; font-size: 12px; }
+  table.details td:first-child { color: #666; padding-right: 10px; white-space: nowrap; vertical-align: top; }
+  table.details td:last-child { font-weight: 600; }
+  /* Full-width cards */
+  .block { border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; margin-bottom: 16px; }
+  .block-content { font-size: 12px; line-height: 1.7; white-space: pre-wrap; color: #1a1a1a; }
+  .block-empty   { color: #aaa; }
+  /* Photos */
+  .photos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .photo-box { height: 130px; border: 1px dashed #d1d5db; border-radius: 6px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #bbb; font-size: 10px; }
+  .photo-box svg { stroke: #c4c4c4; }
+  /* Signature */
+  .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; }
+  .sig-line { height: 52px; margin-bottom: 8px; }
+  .sig-label { border-top: 1px solid #374151; padding-top: 6px; font-size: 10px; color: #777; }
+  /* Footer */
+  .footer { text-align: center; font-size: 10px; color: #aaa; padding-top: 10px; border-top: 1px solid #e5e7eb; margin-top: 4px; }
+  /* Status badge */
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 10px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <!-- ─── Header ─── -->
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div class="logo-box">T</div>
+      <div>
+        <div class="brand-name">TécniServ S.A.</div>
+        <div class="brand-sub">Tel: +54 11 4567-8900</div>
+        <div class="brand-sub">servicios@tecniserv.com</div>
+      </div>
+    </div>
+    <div>
+      <div class="report-label">Reporte de Servicio</div>
+      <div class="order-num">OS-2026-0042</div>
+      <div class="order-date">15 de mayo de 2026</div>
+    </div>
+  </div>
+
+  <!-- ─── Cliente + Detalle ─── -->
+  <div class="grid2">
+    <div class="card">
+      <div class="card-label">Cliente</div>
+      <div class="client-name">Frigoríficos del Sur Ltda.</div>
+      <div class="client-info">Ing. Marcelo Gutiérrez</div>
+      <div class="client-info">Tel: +54 11 5555-0001</div>
+      <div class="client-info">m.gutierrez@frigosur.com</div>
+      <div style="color:#777;margin-top:5px;font-size:11px">Av. San Martín 4780, Quilmes, Buenos Aires</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Detalle de la visita</div>
+      <table class="details">
+        <tr><td>Fecha</td><td>15/05/2026 · 09:30</td></tr>
+        <tr><td>Duración</td><td>3.5 h</td></tr>
+        <tr><td>Tipo</td><td>Mantenimiento preventivo</td></tr>
+        <tr><td>Estado</td><td>Completado</td></tr>
+        <tr><td>Técnico(s)</td><td>Juan Paredes, Ana Torres</td></tr>
+        <tr><td>Ref. externa</td><td>SAP-MO-20260042</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─── Equipo ─── -->
+  <div class="block">
+    <div class="card-label">Equipo / Activo</div>
+    <div style="font-size:14px;font-weight:600">Compresor Bitzer 4NCS-12.2 – Línea 3 · Nro. serie: BZ-2019-00774</div>
+  </div>
+
+  <!-- ─── Descripción ─── -->
+  <div class="block" style="min-height:90px">
+    <div class="card-label">Descripción del trabajo realizado</div>
+    <div class="block-content">Se realizó mantenimiento preventivo completo al compresor de la Línea 3:
+– Cambio de aceite lubricante (4,5 L de Bitzer BSE 32).
+– Limpieza y revisión de válvulas de aspiración y descarga.
+– Verificación de presiones de trabajo: aspiración 2,8 bar / descarga 15,2 bar (dentro de rango normal).
+– Control de temperatura de descarga: 68 °C (normal).
+– Revisión y ajuste de correas del ventilador del condensador.
+– Test de estanqueidad con nitrógeno seco: sin fugas detectadas.</div>
+  </div>
+
+  <!-- ─── Notas ─── -->
+  <div class="block" style="min-height:60px">
+    <div class="card-label">Notas y observaciones</div>
+    <div class="block-content">El rodamiento del motor eléctrico presenta ruido leve. Se recomienda reemplazarlo en el próximo mantenimiento (aprox. 3 meses). Stock disponible: contactar al encargado de compras con código RLM-6205-2RS.</div>
+  </div>
+
+  <!-- ─── Fotos ─── -->
+  <div class="block">
+    <div class="card-label">Registro fotográfico</div>
+    <div class="photos-grid">
+      <div class="photo-box">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.5 4h-5L7 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>
+        </svg>
+        Foto 1
+      </div>
+      <div class="photo-box">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.5 4h-5L7 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>
+        </svg>
+        Foto 2
+      </div>
+      <div class="photo-box">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.5 4h-5L7 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>
+        </svg>
+        Foto 3
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Firma ─── -->
+  <div class="block" style="padding:20px;margin-bottom:24px">
+    <div class="card-label" style="margin-bottom:24px">Conformidad del cliente</div>
+    <div class="sig-grid">
+      <div>
+        <div class="sig-line"></div>
+        <div class="sig-label">Firma del cliente</div>
+      </div>
+      <div>
+        <div class="sig-line"></div>
+        <div class="sig-label">Nombre y fecha</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Footer ─── -->
+  <div class="footer">TécniServ S.A. · Generado el 17 de mayo de 2026</div>
+
+</div>
+</body>
+</html>
