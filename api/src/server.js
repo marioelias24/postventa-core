@@ -1,6 +1,9 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
+import path from 'node:path';
+import fs from 'node:fs/promises';
 import { PrismaClient } from '@prisma/client';
+import multer from 'multer';
 import {
   login, logout, me, requireAuth, changePassword,
   listUsers, createUser, deleteUser, resetUserPassword,
@@ -118,18 +121,300 @@ app.put('/api/sequences/:id', requirePermission('sequences:manage'), async (req,
 
 app.get('/api/data', async (req, res, next) => {
   try {
-    const [tecnicos, tipos, estados, prioridades, clientes, ordenes] = await Promise.all([
+    const [tecnicos, tipos, estados, prioridades, clientes, ordenes, ordenesTrabajo, plantillas] = await Promise.all([
       prisma.tecnico.findMany({ orderBy: { id: 'asc' } }),
       prisma.tipo.findMany({ orderBy: { id: 'asc' } }),
       prisma.estado.findMany({ orderBy: { id: 'asc' } }),
       prisma.prioridad.findMany({ orderBy: { id: 'asc' } }),
       prisma.cliente.findMany({ orderBy: { id: 'asc' } }),
       prisma.orden.findMany({ orderBy: { id: 'asc' } }),
+      prisma.ordenTrabajo.findMany({
+        orderBy: { id: 'asc' },
+        include: {
+          checklist: { orderBy: { orden: 'asc' } },
+          materiales: { orderBy: { id: 'asc' } },
+          adjuntos: { orderBy: { id: 'asc' } },
+        },
+      }),
+      prisma.plantillaChecklist.findMany({
+        orderBy: { id: 'asc' },
+        include: {
+          items: { orderBy: { orden: 'asc' } },
+          productos: { orderBy: { id: 'asc' } },
+        },
+      }),
     ]);
-    res.json({ tecnicos, tipos, estados, prioridades, clientes, ordenes });
+    res.json({ tecnicos, tipos, estados, prioridades, clientes, ordenes, ordenesTrabajo, plantillas });
   } catch (err) {
     next(err);
   }
+});
+
+// ─── PLANTILLAS CHECKLIST ─────────────────────────────────────────────────────
+
+app.get('/api/plantillas-checklist', requirePermission('plantilla:manage'), async (req, res, next) => {
+  try {
+    const plantillas = await prisma.plantillaChecklist.findMany({
+      orderBy: { id: 'asc' },
+      include: { items: { orderBy: { orden: 'asc' } }, productos: { orderBy: { id: 'asc' } } },
+    });
+    res.json({ plantillas });
+  } catch (err) { next(err); }
+});
+
+app.post('/api/plantillas-checklist', requirePermission('plantilla:manage'), async (req, res, next) => {
+  try {
+    const { id, nombre, tipoId, activo, items = [], productos = [] } = req.body || {};
+    const isUp = Number.isInteger(id) && id > 0;
+    const base = {
+      nombre: String(nombre || '').trim(),
+      tipoId: tipoId ? Number(tipoId) : null,
+      activo: activo !== false,
+    };
+    if (!base.nombre) return res.status(400).json({ error: 'nombre es requerido' });
+
+    const result = await prisma.$transaction(async (tx) => {
+      let plantilla;
+      if (isUp) {
+        plantilla = await tx.plantillaChecklist.update({ where: { id }, data: base });
+        await tx.itemPlantilla.deleteMany({ where: { plantillaId: id } });
+        await tx.productoPlantilla.deleteMany({ where: { plantillaId: id } });
+      } else {
+        plantilla = await tx.plantillaChecklist.create({ data: base });
+      }
+      const pid = plantilla.id;
+      if (items.length) {
+        await tx.itemPlantilla.createMany({
+          data: items.map((it, i) => ({ plantillaId: pid, texto: String(it.texto || ''), orden: Number(it.orden ?? i) })),
+        });
+      }
+      if (productos.length) {
+        await tx.productoPlantilla.createMany({
+          data: productos.map(p => ({
+            plantillaId: pid,
+            nombre: String(p.nombre || ''),
+            cantidad: Number(p.cantidad) || 1,
+            unidad: p.unidad ? String(p.unidad) : null,
+          })),
+        });
+      }
+      return tx.plantillaChecklist.findUnique({
+        where: { id: pid },
+        include: { items: { orderBy: { orden: 'asc' } }, productos: { orderBy: { id: 'asc' } } },
+      });
+    });
+
+    res.json(result);
+  } catch (err) {
+    if (err?.code === 'P2025') return res.status(404).json({ error: 'Plantilla no encontrada' });
+    next(err);
+  }
+});
+
+app.delete('/api/plantillas-checklist/:id', requirePermission('plantilla:manage'), async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+    await prisma.plantillaChecklist.delete({ where: { id } });
+    res.status(204).end();
+  } catch (err) {
+    if (err?.code === 'P2025') return res.status(404).json({ error: 'Not found' });
+    next(err);
+  }
+});
+
+// ─── ORDENES DE TRABAJO ──────────────────────────────────────────────────────
+
+const uploadOT = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      cb(null, `ot-adj-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
+app.get('/api/ordenes-trabajo', async (req, res, next) => {
+  try {
+    const ots = await prisma.ordenTrabajo.findMany({
+      orderBy: { id: 'asc' },
+      include: {
+        checklist: { orderBy: { orden: 'asc' } },
+        materiales: { orderBy: { id: 'asc' } },
+        adjuntos: { orderBy: { id: 'asc' } },
+        orden: true,
+      },
+    });
+    res.json({ ordenesTrabajo: ots });
+  } catch (err) { next(err); }
+});
+
+app.post('/api/ordenes-trabajo', requirePermission('ot:edit'), async (req, res, next) => {
+  try {
+    const { id, ordenId, horasReales, firmaCliente, notas, estado, checklist = [], materiales = [] } = req.body || {};
+    const isUp = Number.isInteger(id) && id > 0;
+
+    if (!isUp && (!Number.isInteger(ordenId) || ordenId <= 0)) {
+      return res.status(400).json({ error: 'ordenId es requerido al crear' });
+    }
+
+    if (!hasPermission(req.user?.role, isUp ? 'ot:edit' : 'ot:create')) {
+      return res.status(403).json({ error: 'No tienes permiso para esta acción.' });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      let ot;
+      if (isUp) {
+        const base = {
+          horasReales: horasReales != null ? Number(horasReales) : null,
+          firmaCliente: firmaCliente ? String(firmaCliente) : null,
+          notas: notas ? String(notas) : null,
+          estado: estado || 'borrador',
+        };
+        ot = await tx.ordenTrabajo.update({ where: { id }, data: base });
+        await tx.checklistItemOT.deleteMany({ where: { ordenTrabajoId: id } });
+        await tx.materialOT.deleteMany({ where: { ordenTrabajoId: id } });
+      } else {
+        let numero = null;
+        try { numero = await getNextNumber('ot.numero'); } catch { /* ignore */ }
+
+        ot = await tx.ordenTrabajo.create({
+          data: {
+            ordenId: Number(ordenId),
+            numero,
+            horasReales: horasReales != null ? Number(horasReales) : null,
+            firmaCliente: firmaCliente ? String(firmaCliente) : null,
+            notas: notas ? String(notas) : null,
+            estado: estado || 'borrador',
+          },
+        });
+
+        // Auto-cargar items desde plantilla si el tipo de la orden tiene una.
+        if (checklist.length === 0 && materiales.length === 0) {
+          const orden = await tx.orden.findUnique({ where: { id: Number(ordenId) }, select: { tipoId: true } });
+          if (orden?.tipoId) {
+            const plantilla = await tx.plantillaChecklist.findFirst({
+              where: { tipoId: orden.tipoId, activo: true },
+              include: { items: { orderBy: { orden: 'asc' } }, productos: { orderBy: { id: 'asc' } } },
+            });
+            if (plantilla) {
+              if (plantilla.items.length) {
+                await tx.checklistItemOT.createMany({
+                  data: plantilla.items.map(it => ({
+                    ordenTrabajoId: ot.id,
+                    texto: it.texto,
+                    orden: it.orden,
+                    completado: false,
+                  })),
+                });
+              }
+              if (plantilla.productos.length) {
+                await tx.materialOT.createMany({
+                  data: plantilla.productos.map(p => ({
+                    ordenTrabajoId: ot.id,
+                    nombre: p.nombre,
+                    cantidad: p.cantidad,
+                    unidad: p.unidad,
+                  })),
+                });
+              }
+            }
+          }
+        }
+      }
+
+      const otId = ot.id;
+      if (checklist.length) {
+        await tx.checklistItemOT.createMany({
+          data: checklist.map((it, i) => ({
+            ordenTrabajoId: otId,
+            texto: String(it.texto || ''),
+            completado: Boolean(it.completado),
+            notas: it.notas ? String(it.notas) : null,
+            orden: Number(it.orden ?? i),
+          })),
+        });
+      }
+      if (materiales.length) {
+        await tx.materialOT.createMany({
+          data: materiales.map(m => ({
+            ordenTrabajoId: otId,
+            nombre: String(m.nombre || ''),
+            cantidad: Number(m.cantidad) || 1,
+            unidad: m.unidad ? String(m.unidad) : null,
+          })),
+        });
+      }
+
+      return tx.ordenTrabajo.findUnique({
+        where: { id: otId },
+        include: {
+          checklist: { orderBy: { orden: 'asc' } },
+          materiales: { orderBy: { id: 'asc' } },
+          adjuntos: { orderBy: { id: 'asc' } },
+          orden: true,
+        },
+      });
+    });
+
+    res.json(result);
+  } catch (err) {
+    if (err?.code === 'P2025') return res.status(404).json({ error: 'Not found' });
+    next(err);
+  }
+});
+
+app.delete('/api/ordenes-trabajo/:id', requirePermission('ot:delete'), async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+    // Borrar adjuntos del disco antes de eliminar el registro.
+    const adjuntos = await prisma.adjuntoOT.findMany({ where: { ordenTrabajoId: id } });
+    for (const adj of adjuntos) {
+      await fs.unlink(path.join(UPLOAD_DIR, adj.filename)).catch(() => {});
+    }
+    await prisma.ordenTrabajo.delete({ where: { id } });
+    res.status(204).end();
+  } catch (err) {
+    if (err?.code === 'P2025') return res.status(404).json({ error: 'Not found' });
+    next(err);
+  }
+});
+
+// Adjuntos de OT
+app.post('/api/ordenes-trabajo/:id/adjuntos', requirePermission('ot:edit'), uploadOT.array('files', 10), async (req, res, next) => {
+  try {
+    const ordenTrabajoId = parseInt(req.params.id, 10);
+    if (!Number.isInteger(ordenTrabajoId)) return res.status(400).json({ error: 'Invalid id' });
+    const files = req.files || [];
+    if (!files.length) return res.status(400).json({ error: 'No se recibieron archivos' });
+
+    const created = await prisma.adjuntoOT.createMany({
+      data: files.map(f => ({
+        ordenTrabajoId,
+        filename: f.filename,
+        originalName: f.originalname,
+        mimeType: f.mimetype,
+      })),
+    });
+
+    const adjuntos = await prisma.adjuntoOT.findMany({ where: { ordenTrabajoId }, orderBy: { id: 'asc' } });
+    res.json({ adjuntos, created: created.count });
+  } catch (err) { next(err); }
+});
+
+app.delete('/api/ordenes-trabajo/:id/adjuntos/:adjId', requirePermission('ot:edit'), async (req, res, next) => {
+  try {
+    const ordenTrabajoId = parseInt(req.params.id, 10);
+    const adjId = parseInt(req.params.adjId, 10);
+    const adj = await prisma.adjuntoOT.findFirst({ where: { id: adjId, ordenTrabajoId } });
+    if (!adj) return res.status(404).json({ error: 'Adjunto no encontrado' });
+    await fs.unlink(path.join(UPLOAD_DIR, adj.filename)).catch(() => {});
+    await prisma.adjuntoOT.delete({ where: { id: adjId } });
+    res.status(204).end();
+  } catch (err) { next(err); }
 });
 
 // Import masivo de clientes. Rechaza filas con email/nombre duplicado.

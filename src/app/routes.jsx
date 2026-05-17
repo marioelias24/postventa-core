@@ -17,7 +17,8 @@ import {
 } from '@/features/clientes';
 import { CatalogsPage } from '@/features/catalogos';
 import { ReportsPage } from '@/features/reportes';
-import { UsuariosPage, EmpresaPage, GruposPage, SequenciasPage } from '@/features/ajustes';
+import { UsuariosPage, EmpresaPage, GruposPage, SequenciasPage, PlantillasChecklistPage } from '@/features/ajustes';
+import { OTListPage, OTDetailPage } from '@/features/ordenes-trabajo';
 
 // Redirige una ruta vieja con :id a la nueva, conservando el id.
 function RedirectWithId({ template }) {
@@ -31,6 +32,7 @@ function AjustesIndex() {
   const { user } = useAuth();
   if (hasPermission(user?.role, 'users:manage')) return <Navigate to="usuarios" replace />;
   if (hasPermission(user?.role, 'empresa:edit')) return <Navigate to="empresa" replace />;
+  if (hasPermission(user?.role, 'plantilla:manage')) return <Navigate to="plantillas" replace />;
   return <Navigate to="/" replace />;
 }
 
@@ -92,6 +94,8 @@ export const router = createBrowserRouter([
                   { path: 'planeacion', element: <CalendarPage /> },
                   { path: 'ordenes', element: <OrdersListPage /> },
                   { path: 'ordenes/:id', element: <OrderDetailPage /> },
+                  { path: 'ordenes-trabajo', element: <OTListPage /> },
+                  { path: 'ordenes-trabajo/:id', element: <OTDetailPage /> },
                   { path: 'clientes', children: clientesRoutes },
                   { path: 'configuracion', element: <CatalogsPage /> },
                 ],
@@ -144,6 +148,12 @@ export const router = createBrowserRouter([
                         element: <RequirePermission permissions="sequences:manage" />,
                         children: [
                           { path: 'secuencias', element: <SequenciasPage /> },
+                        ],
+                      },
+                      {
+                        element: <RequirePermission permissions="plantilla:manage" />,
+                        children: [
+                          { path: 'plantillas', element: <PlantillasChecklistPage /> },
                         ],
                       },
                     ],

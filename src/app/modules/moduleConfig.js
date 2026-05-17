@@ -1,6 +1,7 @@
 import {
   Wrench, Calendar, ClipboardList, Users, Sliders,
   Contact2, BarChart3, Settings as SettingsIcon, Building2, ShieldCheck, UserCog, Hash,
+  FileCheck2, ListChecks,
 } from 'lucide-react';
 
 // Definición de los 4 módulos y sus sub-vistas (sidebar).
@@ -14,10 +15,11 @@ export const MODULES = [
     icon: Wrench,
     base: '/mantenimiento',
     subviews: [
-      { id: 'planeacion',    label: 'Planeación',    path: 'planeacion',    icon: Calendar },
-      { id: 'ordenes',       label: 'Órdenes',       path: 'ordenes',       icon: ClipboardList },
-      { id: 'clientes',      label: 'Clientes',      path: 'clientes',      icon: Users },
-      { id: 'configuracion', label: 'Configuración', path: 'configuracion', icon: Sliders },
+      { id: 'planeacion',      label: 'Planeación',         path: 'planeacion',      icon: Calendar },
+      { id: 'ordenes',         label: 'Órdenes',            path: 'ordenes',         icon: ClipboardList },
+      { id: 'ordenes-trabajo', label: 'Órdenes de Trabajo', path: 'ordenes-trabajo', icon: FileCheck2, permission: 'ot:create' },
+      { id: 'clientes',        label: 'Clientes',           path: 'clientes',        icon: Users },
+      { id: 'configuracion',   label: 'Configuración',      path: 'configuracion',   icon: Sliders },
     ],
   },
   {
@@ -51,12 +53,13 @@ export const MODULES = [
     base: '/ajustes',
     // Visible si el usuario tiene CUALQUIERA de estos permisos. El módulo
     // entero se oculta en sidebar/launcher si no tiene ninguno.
-    visiblePermissions: ['users:manage', 'empresa:edit', 'sequences:manage'],
+    visiblePermissions: ['users:manage', 'empresa:edit', 'sequences:manage', 'plantilla:manage'],
     subviews: [
-      { id: 'usuarios',   label: 'Usuarios',          path: 'usuarios',   icon: UserCog,     permission: 'users:manage' },
-      { id: 'empresa',    label: 'Empresa',           path: 'empresa',    icon: Building2,   permission: 'empresa:edit' },
-      { id: 'secuencias', label: 'Secuencias',        path: 'secuencias', icon: Hash,        permission: 'sequences:manage' },
-      { id: 'grupos',     label: 'Roles y permisos',  path: 'grupos',     icon: ShieldCheck, permission: 'users:manage' },
+      { id: 'usuarios',    label: 'Usuarios',               path: 'usuarios',    icon: UserCog,    permission: 'users:manage' },
+      { id: 'empresa',     label: 'Empresa',                path: 'empresa',     icon: Building2,  permission: 'empresa:edit' },
+      { id: 'secuencias',  label: 'Secuencias',             path: 'secuencias',  icon: Hash,       permission: 'sequences:manage' },
+      { id: 'plantillas',  label: 'Plantillas checklist',   path: 'plantillas',  icon: ListChecks, permission: 'plantilla:manage' },
+      { id: 'grupos',      label: 'Roles y permisos',       path: 'grupos',      icon: ShieldCheck, permission: 'users:manage' },
     ],
   },
 ];

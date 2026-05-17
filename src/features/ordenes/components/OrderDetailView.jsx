@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Trash2, ClipboardList, User, Building2,
-  Phone, Mail, MapPin, Navigation, CheckCircle2,
+  Phone, Mail, MapPin, Navigation, CheckCircle2, FileCheck2,
 } from 'lucide-react';
 import { Field } from '@/shared/ui/Field';
 import { Section } from '@/shared/ui/Section';
@@ -16,7 +17,10 @@ import { useCan } from '@/app/permissions';
 export function OrderDetailView({ orderId, data, onSave, onDelete, onBack, onPrev, onNext, pagerInfo }) {
   const canEdit = useCan('orden:edit');
   const canDelete = useCan('orden:delete');
+  const canOT = useCan('ot:create');
+  const navigate = useNavigate();
   const order = data.ordenes.find(o => o.id === orderId);
+  const existingOT = (data.ordenesTrabajo || []).find(ot => ot.ordenId === orderId);
   const [form, setForm] = useState(order ? { ...order, tecnicoIds: tecnicoIdsOf(order) } : null);
   const [savedAt, setSavedAt] = useState(null);
   const [dirty, setDirty] = useState(false);
@@ -93,11 +97,30 @@ export function OrderDetailView({ orderId, data, onSave, onDelete, onBack, onPre
           <h2 className="text-lg sm:text-xl font-bold text-stone-900 truncate font-serif">{labelOrden}</h2>
           <p className="text-xs text-stone-500">Detalle de la orden</p>
         </div>
-        {canDelete ? (
-          <button onClick={handleDelete} className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200" title="Eliminar">
-            <Trash2 className="w-4 h-4" />
-          </button>
-        ) : <div className="w-9" />}
+        <div className="flex items-center gap-2">
+          {canOT && (
+            <button
+              onClick={() => existingOT
+                ? navigate(`/mantenimiento/ordenes-trabajo/${existingOT.id}`)
+                : navigate(`/mantenimiento/ordenes-trabajo/new?ordenId=${orderId}`)
+              }
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border ${
+                existingOT
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                  : 'bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100'
+              }`}
+              title={existingOT ? `Ver OT ${existingOT.numero || '#' + existingOT.id}` : 'Generar Orden de Trabajo'}
+            >
+              <FileCheck2 className="w-4 h-4" />
+              <span className="hidden sm:inline">{existingOT ? (existingOT.numero || `OT #${existingOT.id}`) : 'Generar OT'}</span>
+            </button>
+          )}
+          {canDelete ? (
+            <button onClick={handleDelete} className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200" title="Eliminar">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          ) : <div className="w-9" />}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
