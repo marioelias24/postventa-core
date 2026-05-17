@@ -15,6 +15,7 @@
 //   cliente:delete    → eliminar clientes
 //   cliente:bulk      → importar clientes masivamente
 //   reporte:view      → ver reportes
+//   sequences:manage  → ver/editar configuración de secuencias (Ajustes > Secuencias)
 //
 // "Cambiar mi propia contraseña" no es un permiso — cualquier usuario
 // autenticado puede hacerlo siempre.
@@ -23,7 +24,7 @@ export const ROLES = ['admin', 'supervisor', 'tecnico', 'lectura'];
 
 const PERMS_BY_ROLE = {
   admin: new Set([
-    'users:manage', 'empresa:edit', 'catalogo:edit',
+    'users:manage', 'empresa:edit', 'catalogo:edit', 'sequences:manage',
     'orden:create', 'orden:edit', 'orden:delete',
     'cliente:create', 'cliente:edit', 'cliente:delete', 'cliente:bulk',
     'reporte:view',

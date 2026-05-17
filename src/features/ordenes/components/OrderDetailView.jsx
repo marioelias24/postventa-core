@@ -53,6 +53,7 @@ export function OrderDetailView({ orderId, data, onSave, onDelete, onBack, onPre
     const estadoSel = data.estados.find(s => s.id === form.estadoId);
     const payload = { ...form };
     payload.numero = (payload.numero || '').trim();
+    payload.referenciaExterna = (payload.referenciaExterna || '').trim();
     if (estadoSel?.esFinal && !payload.fechaCompletada) payload.fechaCompletada = fmt(new Date());
     if (!estadoSel?.esFinal) payload.fechaCompletada = null;
     onSave('ordenes', payload);
@@ -114,7 +115,10 @@ export function OrderDetailView({ orderId, data, onSave, onDelete, onBack, onPre
         <div className="lg:col-span-2 space-y-4">
           <Section title="Datos de la orden" icon={ClipboardList}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field label="Número de orden (SAP)"><input value={form.numero || ''} onChange={e => set('numero', e.target.value)} className={inputCls} placeholder="Opcional" /></Field>
+              <Field label="Número de orden"><input value={form.numero || ''} onChange={e => set('numero', e.target.value)} className={inputCls} placeholder="Autogenerado" /></Field>
+              <Field label="Referencia externa (SAP, Odoo, etc.)"><input value={form.referenciaExterna || ''} onChange={e => set('referenciaExterna', e.target.value)} className={inputCls} placeholder="Opcional" /></Field>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
               <Field label="Tipo de servicio">
                 <EntityPicker value={form.tipoId} items={tiposOpts} onChange={v => set('tipoId', v)} onCreate={makeQuickCreate(onSave, 'tipos')} placeholder="— Sin tipo —" emptyLabel="— Sin tipo —" />
               </Field>

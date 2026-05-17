@@ -17,7 +17,7 @@ import {
 } from '@/features/clientes';
 import { CatalogsPage } from '@/features/catalogos';
 import { ReportsPage } from '@/features/reportes';
-import { UsuariosPage, EmpresaPage, GruposPage } from '@/features/ajustes';
+import { UsuariosPage, EmpresaPage, GruposPage, SequenciasPage } from '@/features/ajustes';
 
 // Redirige una ruta vieja con :id a la nueva, conservando el id.
 function RedirectWithId({ template }) {
@@ -138,6 +138,12 @@ export const router = createBrowserRouter([
                         element: <RequirePermission permissions="empresa:edit" />,
                         children: [
                           { path: 'empresa', element: <EmpresaPage /> },
+                        ],
+                      },
+                      {
+                        element: <RequirePermission permissions="sequences:manage" />,
+                        children: [
+                          { path: 'secuencias', element: <SequenciasPage /> },
                         ],
                       },
                     ],

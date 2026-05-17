@@ -11,6 +11,9 @@ import {
   getEmpresa, updateEmpresa, uploadEmpresaLogo, deleteEmpresaLogo,
   uploadLogo, UPLOAD_DIR,
 } from './empresa.js';
+import {
+  getNextNumber, seedDefaultSequences, backfillReferenciaExterna,
+} from './sequences.js';
 
 const prisma = new PrismaClient();
 
@@ -72,6 +75,46 @@ app.get('/api/empresa', getEmpresa);
 app.put('/api/empresa', requirePermission('empresa:edit'), updateEmpresa);
 app.post('/api/empresa/logo', requirePermission('empresa:edit'), uploadLogo, uploadEmpresaLogo);
 app.delete('/api/empresa/logo', requirePermission('empresa:edit'), deleteEmpresaLogo);
+
+// SEQUENCES — solo admin. CRUD para administrar las plantillas de números.
+// La generación atómica (getNextNumber) no se expone como endpoint público;
+// se invoca internamente al crear una orden si llega sin `numero`.
+app.get('/api/sequences', requirePermission('sequences:manage'), async (req, res, next) => {
+  try {
+    const sequences = await prisma.sequence.findMany({ orderBy: { code: 'asc' } });
+    res.json({ sequences });
+  } catch (err) { next(err); }
+});
+
+app.put('/api/sequences/:id', requirePermission('sequences:manage'), async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+    const { name, prefix, suffix, padding, nextNumber, increment, resetCycle, active } = req.body || {};
+    // Solo permitimos editar los campos seguros; `code` es inmutable porque
+    // el código de la aplicación lo referencia.
+    const data = {};
+    if (name !== undefined) data.name = String(name);
+    if (prefix !== undefined) data.prefix = String(prefix);
+    if (suffix !== undefined) data.suffix = String(suffix);
+    if (padding !== undefined) data.padding = Math.max(0, parseInt(padding, 10) || 0);
+    if (nextNumber !== undefined) data.nextNumber = Math.max(1, parseInt(nextNumber, 10) || 1);
+    if (increment !== undefined) data.increment = Math.max(1, parseInt(increment, 10) || 1);
+    if (resetCycle !== undefined) {
+      if (!['never', 'yearly', 'monthly'].includes(resetCycle)) {
+        return res.status(400).json({ error: 'resetCycle debe ser never|yearly|monthly' });
+      }
+      data.resetCycle = resetCycle;
+    }
+    if (active !== undefined) data.active = Boolean(active);
+
+    const sequence = await prisma.sequence.update({ where: { id }, data });
+    res.json({ sequence });
+  } catch (err) {
+    if (err?.code === 'P2025') return res.status(404).json({ error: 'Sequence no encontrada' });
+    next(err);
+  }
+});
 
 app.get('/api/data', async (req, res, next) => {
   try {
@@ -214,10 +257,23 @@ app.post('/api/:collection', async (req, res, next) => {
     }
 
     if (req.params.collection === 'ordenes') {
-      // El número de orden viene de SAP y puede repetirse cuando una misma
-      // orden requiere visitas en varios días (cada fila = una visita).
-      // Si llega vacío lo guardamos como NULL para distinguirlo de una cadena.
+      // El número de orden ahora se autogenera vía la Sequence 'orden.numero'
+      // si llega vacío al crear. Si el usuario lo escribió manualmente, se
+      // respeta. La referencia externa (SAP u otro) va en `referenciaExterna`
+      // y es siempre editable, sin autogenerar.
       if (typeof rest.numero === 'string' && !rest.numero.trim()) rest.numero = null;
+      if (typeof rest.referenciaExterna === 'string' && !rest.referenciaExterna.trim()) {
+        rest.referenciaExterna = null;
+      }
+      if (!isUpdate && !rest.numero) {
+        try {
+          rest.numero = await getNextNumber('orden.numero');
+        } catch (err) {
+          console.error('[api] getNextNumber falló:', err.message);
+          // Si la sequence no existe / falla, seguimos sin numero (queda null).
+          // El boot intenta crear el seed; si todavía no corrió, el próximo intento andará.
+        }
+      }
 
       // Técnicos asignados (tags): normalizar a enteros únicos y derivar el
       // técnico "principal" (tecnicoId = tecnicoIds[0] ?? null) para la relación.
@@ -292,6 +348,16 @@ async function backfillTecnicoIds() {
 }
 
 const port = process.env.PORT || 3000;
-backfillTecnicoIds().finally(() => {
+
+// Boot orquestado: corre los backfills/seeds idempotentes en serie ANTES
+// de aceptar requests (excepto el listen, que arranca igual). Si alguno
+// falla queda logueado pero no bloquea el API.
+async function bootInit() {
+  await backfillTecnicoIds();
+  await seedDefaultSequences().catch(err => console.error('[api] seedDefaultSequences:', err.message));
+  await backfillReferenciaExterna();
+}
+
+bootInit().finally(() => {
   app.listen(port, () => console.log(`[api] listening on :${port}`));
 });

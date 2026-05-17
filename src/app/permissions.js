@@ -23,7 +23,7 @@ export const ROLE_DESCRIPTIONS = {
 
 const PERMS_BY_ROLE = {
   admin: new Set([
-    'users:manage', 'empresa:edit', 'catalogo:edit',
+    'users:manage', 'empresa:edit', 'catalogo:edit', 'sequences:manage',
     'orden:create', 'orden:edit', 'orden:delete',
     'cliente:create', 'cliente:edit', 'cliente:delete', 'cliente:bulk',
     'reporte:view',

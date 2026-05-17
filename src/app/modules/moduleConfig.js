@@ -1,6 +1,6 @@
 import {
   Wrench, Calendar, ClipboardList, Users, Sliders,
-  Contact2, BarChart3, Settings as SettingsIcon, Building2, ShieldCheck, UserCog,
+  Contact2, BarChart3, Settings as SettingsIcon, Building2, ShieldCheck, UserCog, Hash,
 } from 'lucide-react';
 
 // Definición de los 4 módulos y sus sub-vistas (sidebar).
@@ -51,11 +51,12 @@ export const MODULES = [
     base: '/ajustes',
     // Visible si el usuario tiene CUALQUIERA de estos permisos. El módulo
     // entero se oculta en sidebar/launcher si no tiene ninguno.
-    visiblePermissions: ['users:manage', 'empresa:edit'],
+    visiblePermissions: ['users:manage', 'empresa:edit', 'sequences:manage'],
     subviews: [
-      { id: 'usuarios', label: 'Usuarios', path: 'usuarios', icon: UserCog, permission: 'users:manage' },
-      { id: 'empresa',  label: 'Empresa',  path: 'empresa',  icon: Building2, permission: 'empresa:edit' },
-      { id: 'grupos',   label: 'Roles y permisos', path: 'grupos', icon: ShieldCheck, permission: 'users:manage' },
+      { id: 'usuarios',   label: 'Usuarios',          path: 'usuarios',   icon: UserCog,     permission: 'users:manage' },
+      { id: 'empresa',    label: 'Empresa',           path: 'empresa',    icon: Building2,   permission: 'empresa:edit' },
+      { id: 'secuencias', label: 'Secuencias',        path: 'secuencias', icon: Hash,        permission: 'sequences:manage' },
+      { id: 'grupos',     label: 'Roles y permisos',  path: 'grupos',     icon: ShieldCheck, permission: 'users:manage' },
     ],
   },
 ];

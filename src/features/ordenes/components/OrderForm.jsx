@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MapPin, Navigation } from 'lucide-react';
+import { X, MapPin, Navigation, Edit3 } from 'lucide-react';
 import { Field } from '@/shared/ui/Field';
 import { EntityPicker } from '@/shared/ui/EntityPicker';
 import { MultiEntityPicker } from '@/shared/ui/MultiEntityPicker';
@@ -11,11 +11,14 @@ import { tecnicoIdsOf } from '@/shared/lib/orders';
 export function OrderForm({ order, defaultDate, defaults, data, onSave, onClose }) {
   const isEdit = !!order?.id;
   // Sin valores por defecto en los campos de selección: arrancan vacíos.
-  // id y numero quedan a cargo de quien edite (numero viene de SAP); fecha/hora
-  // sí traen un valor inicial cómodo. `defaults` permite pre-cargar campos al
-  // crear (p.ej. desde el tablero de día: técnico + hora del espacio donde se hizo clic).
+  // `numero` se autogenera en el backend al crear (desde la Sequence
+  // 'orden.numero'); el usuario puede overridearlo manualmente abriendo el
+  // editor. `referenciaExterna` (ej. SAP) es siempre libre.
+  // `defaults` permite pre-cargar campos al crear (p.ej. desde el tablero de
+  // día: técnico + hora del espacio donde se hizo clic).
   const [form, setForm] = useState(() => order ? { ...order, tecnicoIds: tecnicoIdsOf(order) } : {
     numero: '',
+    referenciaExterna: '',
     clienteId: null,
     tecnicoIds: [],
     tipoId: null,
@@ -27,6 +30,9 @@ export function OrderForm({ order, defaultDate, defaults, data, onSave, onClose 
     equipo: '', descripcion: '', notas: '', fechaCompletada: null,
     ...(defaults || {}),
   });
+  // Al editar se permite cambiar el numero libremente; al crear el numero
+  // se autogenera, pero ofrecemos un toggle para overrridear manualmente.
+  const [numeroManual, setNumeroManual] = useState(isEdit);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const cliente = data.clientes.find(c => c.id === form.clienteId);
@@ -42,6 +48,7 @@ export function OrderForm({ order, defaultDate, defaults, data, onSave, onClose 
     const estadoSel = data.estados.find(s => s.id === form.estadoId);
     const payload = { ...form };
     payload.numero = (payload.numero || '').trim();
+    payload.referenciaExterna = (payload.referenciaExterna || '').trim();
     // Cualquier estado marcado como "final" deja registrada la fecha de cierre.
     if (estadoSel?.esFinal && !payload.fechaCompletada) payload.fechaCompletada = fmt(new Date());
     if (!estadoSel?.esFinal) payload.fechaCompletada = null;
@@ -57,8 +64,30 @@ export function OrderForm({ order, defaultDate, defaults, data, onSave, onClose 
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-stone-100 text-stone-500"><X className="w-5 h-5" /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          <Field label="Número de orden (SAP)">
-            <input value={form.numero || ''} onChange={e => set('numero', e.target.value)} className={inputCls} placeholder="Ej.: 4500012345 — opcional" />
+          <Field label="Número de orden">
+            {!isEdit && !numeroManual ? (
+              <div className="flex items-center gap-2">
+                <input
+                  value="Se autogenerará al guardar"
+                  readOnly
+                  className={inputCls + ' bg-stone-50 text-stone-500 italic cursor-not-allowed'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setNumeroManual(true)}
+                  className="px-3 py-2 text-xs rounded-lg bg-white border border-stone-200 hover:bg-stone-50 text-stone-700 flex items-center gap-1.5 whitespace-nowrap"
+                  title="Asignar número manualmente"
+                >
+                  <Edit3 className="w-3 h-3" /> Manual
+                </button>
+              </div>
+            ) : (
+              <input value={form.numero || ''} onChange={e => set('numero', e.target.value)} className={inputCls} placeholder="Ej.: OS-2026-00042" />
+            )}
+          </Field>
+
+          <Field label="Referencia externa (SAP, Odoo, etc.)">
+            <input value={form.referenciaExterna || ''} onChange={e => set('referenciaExterna', e.target.value)} className={inputCls} placeholder="Opcional — número en el sistema externo" />
           </Field>
 
           <Field label="Tipo de servicio">

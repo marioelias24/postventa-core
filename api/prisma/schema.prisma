@@ -19,6 +19,36 @@ model User {
   createdAt    DateTime @default(now())
 }
 
+// Secuencias parametrizables (equivalente a ir.sequence de Odoo). Permite
+// autogenerar identificadores con prefijo + padding + reset cíclico.
+// El siguiente número se incrementa de forma atómica (UPDATE...RETURNING
+// dentro de una transacción) para garantizar consecutivos sin huecos.
+model Sequence {
+  id         Int       @id @default(autoincrement())
+  // Identificador estable usado por el código para pedir el siguiente número.
+  // Ej.: "orden.numero". Único en todo el sistema.
+  code       String    @unique
+  // Nombre legible para mostrar en la UI de Ajustes.
+  name       String
+  // Prefijo con placeholders: {year} (2026), {year2} (26), {month} (05), {day} (17).
+  prefix     String    @default("")
+  // Sufijo con los mismos placeholders.
+  suffix     String    @default("")
+  // Cantidad de dígitos del número (rellena con ceros a la izquierda).
+  padding    Int       @default(5)
+  // Próximo número a entregar.
+  nextNumber Int       @default(1)
+  // De cuánto en cuánto avanza (normalmente 1).
+  increment  Int       @default(1)
+  // Reset automático del contador: "never" | "yearly" | "monthly".
+  resetCycle String    @default("never")
+  // Última vez que se reseteó el contador (se usa para detectar cuándo toca el próximo reset).
+  lastReset  DateTime?
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
 // Datos generales de la organización. Es un singleton: usamos id=1.
 // Si la fila no existe, GET /api/empresa la crea con valores por defecto.
 model Empresa {
@@ -85,10 +115,15 @@ model Prioridad {
 
 model Orden {
   id               Int      @id @default(autoincrement())
-  // El número de orden viene de SAP. Una misma orden puede tener varias filas
-  // (una por día/visita), así que NO es único. Si se necesita identificar una
-  // orden lógica completa, se agrupa por `numero` desde la consulta.
+  // Identificador legible de la orden. A partir de la sequence `orden.numero`
+  // se autogenera al crear (ej.: "OS-2026-00042") cuando no se provee uno;
+  // si el usuario lo escribe manualmente, se respeta el valor dado. No es
+  // único en BD: una misma orden lógica puede partirse en varias visitas.
   numero           String?
+  // Identificador en un sistema externo (SAP, NetSuite, etc.). Editable
+  // libremente, no se autogenera. Antes de 2026-05-17 esta información
+  // vivía en el campo `numero` — migración aditiva movió los valores acá.
+  referenciaExterna String?
   fechaProgramada  String
   horaInicio       String
   duracionEstimada Float
