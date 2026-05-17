@@ -3,6 +3,7 @@ import { storage } from '@/services/storage';
 
 const EMPTY_DATA = {
   tecnicos: [], tipos: [], estados: [], prioridades: [], clientes: [], ordenes: [],
+  ordenesTrabajo: [], plantillas: [],
 };
 
 // Cada cuánto se vuelve a leer del servidor para reflejar cambios de otras
