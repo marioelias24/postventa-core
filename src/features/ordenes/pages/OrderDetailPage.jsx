@@ -25,20 +25,26 @@ export function OrderDetailPage() {
 
   // Al saltar a otra orden con ‹ ›: navegación relativa (../newId) para que
   // funcione bajo cualquier prefijo de módulo. replace:true evita apilar
-  // historial.
+  // historial. `relative: 'path'` es CRÍTICO acá: la ruta es `ordenes/:id`
+  // (un único route con dos segments). El default de React Router v6+ trata
+  // `..` como "salir del route entero" (= salta a `/mantenimiento`), lo que
+  // hace que `../14` resuelva a `/mantenimiento/14` → no matchea → catch-all
+  // manda al launcher. Con `relative: 'path'` se comporta como un browser
+  // tradicional: `..` sube un segment de la URL y `../14` queda en
+  // `/mantenimiento/ordenes/14`. Misma razón en goBack/handleDelete.
   const navState = (siblingIds || from) ? { siblingIds, from } : undefined;
-  const goTo = (target) => navigate(`../${target}`, { replace: true, state: navState });
+  const goTo = (target) => navigate(`../${target}`, { replace: true, relative: 'path', state: navState });
 
   // "Volver": si hay historial atrás, usar back; si no, ir al `from` o un
   // fallback relativo (la lista de órdenes del módulo).
   const goBack = () => {
     if (window.history.state && window.history.state.idx > 0) navigate(-1);
-    else navigate(from || '..');
+    else navigate(from || '..', { relative: 'path' });
   };
 
   const handleDelete = (orderId) => {
     remove('ordenes', orderId);
-    navigate(from || '..');
+    navigate(from || '..', { relative: 'path' });
   };
 
   return (
