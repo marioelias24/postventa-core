@@ -83,11 +83,25 @@ export async function getNextNumber(code) {
 export async function seedDefaultSequences() {
   await prisma.sequence.upsert({
     where: { code: 'orden.numero' },
-    update: {}, // si ya existe, no tocamos los valores (el usuario pudo customizarlos)
+    update: {},
     create: {
       code: 'orden.numero',
       name: 'Número de orden',
       prefix: 'OS-{year}-',
+      suffix: '',
+      padding: 5,
+      nextNumber: 1,
+      increment: 1,
+      resetCycle: 'yearly',
+    },
+  });
+  await prisma.sequence.upsert({
+    where: { code: 'ot.numero' },
+    update: {},
+    create: {
+      code: 'ot.numero',
+      name: 'Número de orden de trabajo',
+      prefix: 'OT-{year}-',
       suffix: '',
       padding: 5,
       nextNumber: 1,

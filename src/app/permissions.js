@@ -27,17 +27,22 @@ const PERMS_BY_ROLE = {
     'orden:create', 'orden:edit', 'orden:delete',
     'cliente:create', 'cliente:edit', 'cliente:delete', 'cliente:bulk',
     'reporte:view',
+    'ot:create', 'ot:edit', 'ot:delete',
+    'plantilla:manage',
   ]),
   supervisor: new Set([
     'empresa:edit', 'catalogo:edit',
     'orden:create', 'orden:edit', 'orden:delete',
     'cliente:create', 'cliente:edit', 'cliente:delete', 'cliente:bulk',
     'reporte:view',
+    'ot:create', 'ot:edit', 'ot:delete',
+    'plantilla:manage',
   ]),
   tecnico: new Set([
     'orden:create', 'orden:edit',
     'cliente:create', 'cliente:edit',
     'reporte:view',
+    'ot:create', 'ot:edit',
   ]),
   lectura: new Set([
     'reporte:view',

@@ -88,11 +88,12 @@ model Cliente {
 }
 
 model Tipo {
-  id      Int     @id @default(autoincrement())
-  nombre  String
-  color   String
-  activo  Boolean @default(true)
-  ordenes Orden[]
+  id         Int                  @id @default(autoincrement())
+  nombre     String
+  color      String
+  activo     Boolean              @default(true)
+  ordenes    Orden[]
+  plantillas PlantillaChecklist[]
 }
 
 model Estado {
@@ -153,4 +154,80 @@ model Orden {
   estado      Estado?    @relation(fields: [estadoId], references: [id], onDelete: Restrict)
   prioridadId Int?
   prioridad   Prioridad? @relation(fields: [prioridadId], references: [id], onDelete: Restrict)
+
+  ordenesTrabajo OrdenTrabajo[]
+}
+
+model PlantillaChecklist {
+  id        Int               @id @default(autoincrement())
+  nombre    String
+  tipoId    Int?
+  tipo      Tipo?             @relation(fields: [tipoId], references: [id], onDelete: SetNull)
+  activo    Boolean           @default(true)
+  items     ItemPlantilla[]
+  productos ProductoPlantilla[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model ItemPlantilla {
+  id          Int                @id @default(autoincrement())
+  plantillaId Int
+  plantilla   PlantillaChecklist @relation(fields: [plantillaId], references: [id], onDelete: Cascade)
+  texto       String
+  orden       Int                @default(0)
+}
+
+model ProductoPlantilla {
+  id          Int                @id @default(autoincrement())
+  plantillaId Int
+  plantilla   PlantillaChecklist @relation(fields: [plantillaId], references: [id], onDelete: Cascade)
+  nombre      String
+  cantidad    Float              @default(1)
+  unidad      String?
+}
+
+model OrdenTrabajo {
+  id             Int               @id @default(autoincrement())
+  numero         String?
+  ordenId        Int
+  orden          Orden             @relation(fields: [ordenId], references: [id], onDelete: Restrict)
+  horasReales    Float?
+  firmaCliente   String?
+  notas          String?
+  estado         String            @default("borrador")
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  checklist      ChecklistItemOT[]
+  materiales     MaterialOT[]
+  adjuntos       AdjuntoOT[]
+}
+
+model ChecklistItemOT {
+  id             Int          @id @default(autoincrement())
+  ordenTrabajoId Int
+  ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
+  texto          String
+  completado     Boolean      @default(false)
+  notas          String?
+  orden          Int          @default(0)
+}
+
+model MaterialOT {
+  id             Int          @id @default(autoincrement())
+  ordenTrabajoId Int
+  ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
+  nombre         String
+  cantidad       Float        @default(1)
+  unidad         String?
+}
+
+model AdjuntoOT {
+  id             Int          @id @default(autoincrement())
+  ordenTrabajoId Int
+  ordenTrabajo   OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Cascade)
+  filename       String
+  originalName   String
+  mimeType       String
+  createdAt      DateTime     @default(now())
 }

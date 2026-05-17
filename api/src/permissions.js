@@ -28,6 +28,8 @@ const PERMS_BY_ROLE = {
     'orden:create', 'orden:edit', 'orden:delete',
     'cliente:create', 'cliente:edit', 'cliente:delete', 'cliente:bulk',
     'reporte:view',
+    'ot:create', 'ot:edit', 'ot:delete',
+    'plantilla:manage',
   ]),
   supervisor: new Set([
     // Igual que admin pero SIN gestión de usuarios.
@@ -35,12 +37,15 @@ const PERMS_BY_ROLE = {
     'orden:create', 'orden:edit', 'orden:delete',
     'cliente:create', 'cliente:edit', 'cliente:delete', 'cliente:bulk',
     'reporte:view',
+    'ot:create', 'ot:edit', 'ot:delete',
+    'plantilla:manage',
   ]),
   tecnico: new Set([
     // Crea y edita pero NO elimina nada. NO entra a Ajustes.
     'orden:create', 'orden:edit',
     'cliente:create', 'cliente:edit',
     'reporte:view',
+    'ot:create', 'ot:edit',
   ]),
   lectura: new Set([
     // Solo lectura. Ve calendario/órdenes/clientes/reportes.

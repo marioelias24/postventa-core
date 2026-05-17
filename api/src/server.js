@@ -1,6 +1,9 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
+import path from 'node:path';
+import fs from 'node:fs/promises';
 import { PrismaClient } from '@prisma/client';
+import multer from 'multer';
 import {
   login, logout, me, requireAuth, changePassword,
   listUsers, createUser, deleteUser, resetUserPassword,
@@ -118,15 +121,30 @@ app.put('/api/sequences/:id', requirePermission('sequences:manage'), async (req,
 
 app.get('/api/data', async (req, res, next) => {
   try {
-    const [tecnicos, tipos, estados, prioridades, clientes, ordenes] = await Promise.all([
+    const [tecnicos, tipos, estados, prioridades, clientes, ordenes, ordenesTrabajo, plantillas] = await Promise.all([
       prisma.tecnico.findMany({ orderBy: { id: 'asc' } }),
       prisma.tipo.findMany({ orderBy: { id: 'asc' } }),
       prisma.estado.findMany({ orderBy: { id: 'asc' } }),
       prisma.prioridad.findMany({ orderBy: { id: 'asc' } }),
       prisma.cliente.findMany({ orderBy: { id: 'asc' } }),
       prisma.orden.findMany({ orderBy: { id: 'asc' } }),
+      prisma.ordenTrabajo.findMany({
+        orderBy: { id: 'asc' },
+        include: {
+          checklist: { orderBy: { orden: 'asc' } },
+          materiales: { orderBy: { id: 'asc' } },
+          adjuntos: { orderBy: { id: 'asc' } },
+        },
+      }),
+      prisma.plantillaChecklist.findMany({
+        orderBy: { id: 'asc' },
+        include: {
+          items: { orderBy: { orden: 'asc' } },
+          productos: { orderBy: { id: 'asc' } },
+        },
+      }),
     ]);
-    res.json({ tecnicos, tipos, estados, prioridades, clientes, ordenes });
+    res.json({ tecnicos, tipos, estados, prioridades, clientes, ordenes, ordenesTrabajo, plantillas });
   } catch (err) {
     next(err);
   }
