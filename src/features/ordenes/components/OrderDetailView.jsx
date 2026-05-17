@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   ChevronLeft, ChevronRight, Trash2, ClipboardList, User, Building2,
-  Phone, Mail, MapPin, Navigation, CheckCircle2,
+  Phone, Mail, MapPin, Navigation, CheckCircle2, FileText,
 } from 'lucide-react';
 import { Field } from '@/shared/ui/Field';
 import { Section } from '@/shared/ui/Section';
@@ -12,6 +12,7 @@ import { fmt } from '@/shared/lib/dates';
 import { makeQuickCreate } from '@/shared/lib/catalogs';
 import { tecnicoIdsOf } from '@/shared/lib/orders';
 import { useCan } from '@/app/permissions';
+import { OrderReportModal } from './OrderReportModal';
 
 export function OrderDetailView({ orderId, data, onSave, onDelete, onBack, onPrev, onNext, pagerInfo }) {
   const canEdit = useCan('orden:edit');
@@ -20,6 +21,7 @@ export function OrderDetailView({ orderId, data, onSave, onDelete, onBack, onPre
   const [form, setForm] = useState(order ? { ...order, tecnicoIds: tecnicoIdsOf(order) } : null);
   const [savedAt, setSavedAt] = useState(null);
   const [dirty, setDirty] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   if (!order || !form) {
     return (
@@ -96,11 +98,20 @@ export function OrderDetailView({ orderId, data, onSave, onDelete, onBack, onPre
           <h2 className="text-lg sm:text-xl font-bold text-stone-900 truncate font-serif">{labelOrden}</h2>
           <p className="text-xs text-stone-500">Detalle de la orden</p>
         </div>
-        {canDelete ? (
-          <button onClick={handleDelete} className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200" title="Eliminar">
-            <Trash2 className="w-4 h-4" />
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setShowReport(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-stone-200 hover:bg-stone-50 text-stone-700 text-sm"
+            title="Generar reporte PDF"
+          >
+            <FileText className="w-4 h-4" /> Reporte
           </button>
-        ) : <div className="w-9" />}
+          {canDelete && (
+            <button onClick={handleDelete} className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200" title="Eliminar">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -228,6 +239,10 @@ export function OrderDetailView({ orderId, data, onSave, onDelete, onBack, onPre
           </Section>
         </div>
       </div>
+
+      {showReport && (
+        <OrderReportModal order={form} data={data} onClose={() => setShowReport(false)} />
+      )}
 
       <div className="fixed bottom-0 left-0 right-0 backdrop-blur border-t border-stone-200 z-20" style={{ background: 'rgba(247,247,244,0.95)' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
