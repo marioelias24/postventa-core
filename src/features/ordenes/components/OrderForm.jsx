@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MapPin, Navigation, Edit3 } from 'lucide-react';
+import { X, MapPin, Navigation, Edit3, CalendarPlus } from 'lucide-react';
 import { Field } from '@/shared/ui/Field';
 import { EntityPicker } from '@/shared/ui/EntityPicker';
 import { MultiEntityPicker } from '@/shared/ui/MultiEntityPicker';
@@ -8,14 +8,8 @@ import { fmt } from '@/shared/lib/dates';
 import { makeQuickCreate } from '@/shared/lib/catalogs';
 import { tecnicoIdsOf } from '@/shared/lib/orders';
 
-export function OrderForm({ order, defaultDate, defaults, data, onSave, onClose }) {
+export function OrderForm({ order, defaultDate, defaults, backlogMode = false, data, onSave, onClose }) {
   const isEdit = !!order?.id;
-  // Sin valores por defecto en los campos de selección: arrancan vacíos.
-  // `numero` se autogenera en el backend al crear (desde la Sequence
-  // 'orden.numero'); el usuario puede overridearlo manualmente abriendo el
-  // editor. `referenciaExterna` (ej. SAP) es siempre libre.
-  // `defaults` permite pre-cargar campos al crear (p.ej. desde el tablero de
-  // día: técnico + hora del espacio donde se hizo clic).
   const [form, setForm] = useState(() => order ? { ...order, tecnicoIds: tecnicoIdsOf(order) } : {
     numero: '',
     referenciaExterna: '',
@@ -24,15 +18,14 @@ export function OrderForm({ order, defaultDate, defaults, data, onSave, onClose 
     tipoId: null,
     estadoId: null,
     prioridadId: null,
-    fechaProgramada: defaultDate ? fmt(defaultDate) : fmt(new Date()),
-    horaInicio: '08:00',
-    duracionEstimada: 2,
+    fechaProgramada: backlogMode ? '' : (defaultDate ? fmt(defaultDate) : fmt(new Date())),
+    horaInicio: backlogMode ? '' : '08:00',
+    duracionEstimada: backlogMode ? '' : 2,
     equipo: '', descripcion: '', notas: '', fechaCompletada: null,
     ...(defaults || {}),
   });
-  // Al editar se permite cambiar el numero libremente; al crear el numero
-  // se autogenera, pero ofrecemos un toggle para overrridear manualmente.
   const [numeroManual, setNumeroManual] = useState(isEdit);
+  const [mostrarFecha, setMostrarFecha] = useState(!backlogMode || isEdit);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const cliente = data.clientes.find(c => c.id === form.clienteId);
@@ -49,7 +42,9 @@ export function OrderForm({ order, defaultDate, defaults, data, onSave, onClose 
     const payload = { ...form };
     payload.numero = (payload.numero || '').trim();
     payload.referenciaExterna = (payload.referenciaExterna || '').trim();
-    // Cualquier estado marcado como "final" deja registrada la fecha de cierre.
+    payload.fechaProgramada = (payload.fechaProgramada || '').trim() || null;
+    payload.horaInicio = (payload.horaInicio || '').trim() || null;
+    payload.duracionEstimada = payload.duracionEstimada || null;
     if (estadoSel?.esFinal && !payload.fechaCompletada) payload.fechaCompletada = fmt(new Date());
     if (!estadoSel?.esFinal) payload.fechaCompletada = null;
     onSave('ordenes', payload);
@@ -154,11 +149,35 @@ export function OrderForm({ order, defaultDate, defaults, data, onSave, onClose 
             />
           </Field>
 
-          <div className="grid grid-cols-3 gap-3">
-            <Field label="Fecha"><input type="date" value={form.fechaProgramada} onChange={e => set('fechaProgramada', e.target.value)} className={inputCls} /></Field>
-            <Field label="Hora"><input type="time" value={form.horaInicio} onChange={e => set('horaInicio', e.target.value)} className={inputCls} /></Field>
-            <Field label="Duración (h)"><input type="number" min="0.5" step="0.5" value={form.duracionEstimada} onChange={e => set('duracionEstimada', parseFloat(e.target.value) || 1)} className={inputCls} /></Field>
-          </div>
+          {backlogMode && !isEdit && !mostrarFecha ? (
+            <button
+              type="button"
+              onClick={() => setMostrarFecha(true)}
+              className="w-full py-2.5 text-sm border border-dashed border-stone-300 rounded-lg text-stone-500 hover:border-teal-400 hover:text-teal-600 flex items-center justify-center gap-2"
+            >
+              <CalendarPlus className="w-4 h-4" /> Programar fecha y hora (opcional)
+            </button>
+          ) : (
+            <div className="space-y-2">
+              {backlogMode && !isEdit && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-stone-600">Programación de visita</span>
+                  <button
+                    type="button"
+                    onClick={() => { setMostrarFecha(false); set('fechaProgramada', ''); set('horaInicio', ''); set('duracionEstimada', ''); }}
+                    className="text-xs text-stone-400 hover:text-stone-600"
+                  >
+                    Quitar fecha
+                  </button>
+                </div>
+              )}
+              <div className="grid grid-cols-3 gap-3">
+                <Field label="Fecha"><input type="date" value={form.fechaProgramada || ''} onChange={e => set('fechaProgramada', e.target.value)} className={inputCls} /></Field>
+                <Field label="Hora"><input type="time" value={form.horaInicio || ''} onChange={e => set('horaInicio', e.target.value)} className={inputCls} /></Field>
+                <Field label="Duración (h)"><input type="number" min="0.5" step="0.5" value={form.duracionEstimada || ''} onChange={e => set('duracionEstimada', parseFloat(e.target.value) || '')} className={inputCls} /></Field>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Estado">

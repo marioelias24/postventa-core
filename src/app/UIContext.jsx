@@ -19,7 +19,7 @@ export function UIProvider({ children }) {
     setCalendarView,
     calendarRefDate,
     setCalendarRefDate,
-    openNewOrderForm: (defaultDate = null, defaults = null) => setOrderForm({ defaultDate, defaults }),
+    openNewOrderForm: (defaultDate = null, defaults = null, backlogMode = false) => setOrderForm({ defaultDate, defaults, backlogMode }),
     closeOrderForm: () => setOrderForm(null),
     openDayDetail: (date) => setDayDetail(date),
     closeDayDetail: () => setDayDetail(null),

@@ -261,6 +261,7 @@ export function ModuleLayout({ moduleId }) {
           order={null}
           defaultDate={orderForm.defaultDate}
           defaults={orderForm.defaults}
+          backlogMode={orderForm.backlogMode || false}
           data={data}
           onSave={upsert}
           onClose={closeOrderForm}

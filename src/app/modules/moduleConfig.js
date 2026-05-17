@@ -1,5 +1,5 @@
 import {
-  Wrench, Calendar, ClipboardList, Users, Sliders,
+  Wrench, Calendar, ClipboardList, Users, Sliders, Inbox,
   Contact2, BarChart3, Settings as SettingsIcon, Building2, ShieldCheck, UserCog, Hash,
 } from 'lucide-react';
 
@@ -15,6 +15,7 @@ export const MODULES = [
     base: '/mantenimiento',
     subviews: [
       { id: 'planeacion',    label: 'Planeación',    path: 'planeacion',    icon: Calendar },
+      { id: 'backlog',       label: 'Backlog',       path: 'backlog',       icon: Inbox },
       { id: 'ordenes',       label: 'Órdenes',       path: 'ordenes',       icon: ClipboardList },
       { id: 'clientes',      label: 'Clientes',      path: 'clientes',      icon: Users },
       { id: 'configuracion', label: 'Configuración', path: 'configuracion', icon: Sliders },

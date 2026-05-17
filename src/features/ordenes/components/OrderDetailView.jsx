@@ -54,6 +54,9 @@ export function OrderDetailView({ orderId, data, onSave, onDelete, onBack, onPre
     const payload = { ...form };
     payload.numero = (payload.numero || '').trim();
     payload.referenciaExterna = (payload.referenciaExterna || '').trim();
+    payload.fechaProgramada = (payload.fechaProgramada || '').trim() || null;
+    payload.horaInicio = (payload.horaInicio || '').trim() || null;
+    payload.duracionEstimada = payload.duracionEstimada || null;
     if (estadoSel?.esFinal && !payload.fechaCompletada) payload.fechaCompletada = fmt(new Date());
     if (!estadoSel?.esFinal) payload.fechaCompletada = null;
     onSave('ordenes', payload);
@@ -132,9 +135,9 @@ export function OrderDetailView({ orderId, data, onSave, onDelete, onBack, onPre
               </Field>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Fecha"><input type="date" value={form.fechaProgramada} onChange={e => set('fechaProgramada', e.target.value)} className={inputCls} /></Field>
-              <Field label="Hora"><input type="time" value={form.horaInicio} onChange={e => set('horaInicio', e.target.value)} className={inputCls} /></Field>
-              <Field label="Duración (h)"><input type="number" min="0.5" step="0.5" value={form.duracionEstimada} onChange={e => set('duracionEstimada', parseFloat(e.target.value) || 1)} className={inputCls} /></Field>
+              <Field label="Fecha"><input type="date" value={form.fechaProgramada || ''} onChange={e => set('fechaProgramada', e.target.value || null)} className={inputCls} /></Field>
+              <Field label="Hora"><input type="time" value={form.horaInicio || ''} onChange={e => set('horaInicio', e.target.value || null)} className={inputCls} /></Field>
+              <Field label="Duración (h)"><input type="number" min="0.5" step="0.5" value={form.duracionEstimada ?? ''} onChange={e => set('duracionEstimada', parseFloat(e.target.value) || null)} className={inputCls} /></Field>
             </div>
             <Field label="Equipo / activo">
               <input value={form.equipo} onChange={e => set('equipo', e.target.value)} className={inputCls} />

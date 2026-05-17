@@ -12,6 +12,7 @@ import { ModuleLayout } from '@/app/modules/ModuleLayout';
 import { LoginPage } from '@/features/auth';
 import { CalendarPage } from '@/features/calendario';
 import { OrdersListPage, OrderDetailPage } from '@/features/ordenes';
+import { BacklogPage } from '@/features/backlog';
 import {
   ClientDetailPage, ClientesCatalogPage, ImportClientesPage,
 } from '@/features/clientes';
@@ -90,6 +91,7 @@ export const router = createBrowserRouter([
                 children: [
                   { index: true, element: <Navigate to="planeacion" replace /> },
                   { path: 'planeacion', element: <CalendarPage /> },
+                  { path: 'backlog', element: <BacklogPage /> },
                   { path: 'ordenes', element: <OrdersListPage /> },
                   { path: 'ordenes/:id', element: <OrderDetailPage /> },
                   { path: 'clientes', children: clientesRoutes },

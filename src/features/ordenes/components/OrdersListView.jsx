@@ -39,7 +39,14 @@ export function OrdersListView({ data, onEdit, onDelete, onAdd }) {
         if (!hay.includes(q)) return false;
       }
       return true;
-    }).sort((a, b) => b.fechaProgramada.localeCompare(a.fechaProgramada) || a.horaInicio.localeCompare(b.horaInicio));
+    }).sort((a, b) => {
+      const fa = a.fechaProgramada || '';
+      const fb = b.fechaProgramada || '';
+      if (!fa && !fb) return 0;
+      if (!fa) return 1;
+      if (!fb) return -1;
+      return fb.localeCompare(fa) || (a.horaInicio || '').localeCompare(b.horaInicio || '');
+    });
   }, [data.ordenes, filters, cliMap]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -104,7 +111,7 @@ export function OrdersListView({ data, onEdit, onDelete, onAdd }) {
                       <div className="font-medium">{cli?.nombre || '—'}</div>
                       <div className="text-xs text-stone-500 truncate max-w-[200px]">{o.equipo}</div>
                     </td>
-                    <td className="px-3 py-2 text-stone-700 whitespace-nowrap">{o.fechaProgramada}<div className="text-xs text-stone-500">{o.horaInicio}</div></td>
+                    <td className="px-3 py-2 text-stone-700 whitespace-nowrap">{o.fechaProgramada || '—'}<div className="text-xs text-stone-500">{o.horaInicio || ''}</div></td>
                     <td className="px-3 py-2"><span className="px-2 py-0.5 rounded text-xs text-white font-medium" style={{ backgroundColor: ti?.color || '#64748b' }}>{ti?.nombre || '—'}</span></td>
                     <td className="px-3 py-2"><span className="px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: (st?.color || '#64748b') + '22', color: st?.color || '#64748b' }}>{st?.nombre || '—'}</span></td>
                     <td className="px-3 py-2 text-stone-700 text-xs">{tecNames.length ? tecNames.join(', ') : '—'}</td>

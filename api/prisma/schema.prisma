@@ -124,9 +124,9 @@ model Orden {
   // libremente, no se autogenera. Antes de 2026-05-17 esta información
   // vivía en el campo `numero` — migración aditiva movió los valores acá.
   referenciaExterna String?
-  fechaProgramada  String
-  horaInicio       String
-  duracionEstimada Float
+  fechaProgramada  String?
+  horaInicio       String?
+  duracionEstimada Float?
   equipo           String
   descripcion      String?
   notas            String?
