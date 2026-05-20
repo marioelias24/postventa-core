@@ -1,9 +1,10 @@
-import { X, Clock, User, MapPin, Edit2, Trash2, Plus } from 'lucide-react';
+import { X, Clock, User, MapPin, Edit2, Plus } from 'lucide-react';
 import { fmt } from '@/shared/lib/dates';
 import { tecnicoIdsOf } from '@/shared/lib/orders';
+import { getOrderStatusMeta } from '@/shared/lib/orderStatus';
 import { BRAND } from '@/config/branding';
 
-export function DayDetailModal({ date, data, onClose, onEdit, onDelete, onAdd }) {
+export function DayDetailModal({ date, data, onClose, onEdit, onAdd }) {
   if (!date) return null;
   const key = fmt(date);
   const dayOrders = data.ordenes.filter(o => o.fechaProgramada === key).sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
@@ -11,7 +12,6 @@ export function DayDetailModal({ date, data, onClose, onEdit, onDelete, onAdd })
   const cliMap = Object.fromEntries(data.clientes.map(c => [c.id, c]));
   const tcMap  = Object.fromEntries(data.tecnicos.map(t => [t.id, t]));
   const tiMap  = Object.fromEntries(data.tipos.map(t => [t.id, t]));
-  const stMap  = Object.fromEntries(data.estados.map(s => [s.id, s]));
 
   return (
     <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -30,7 +30,7 @@ export function DayDetailModal({ date, data, onClose, onEdit, onDelete, onAdd })
             const cli = cliMap[o.clienteId];
             const tecNames = tecnicoIdsOf(o).map(id => tcMap[id]?.nombre).filter(Boolean);
             const ti  = tiMap[o.tipoId];
-            const st  = stMap[o.estadoId];
+            const st  = getOrderStatusMeta(o, data.estados);
             return (
               <div key={o.id} className="bg-stone-50 border border-stone-200 rounded-lg p-3">
                 <div className="flex items-start justify-between gap-2 mb-2">
@@ -38,7 +38,7 @@ export function DayDetailModal({ date, data, onClose, onEdit, onDelete, onAdd })
                     <span className="px-2 py-0.5 rounded text-xs text-white font-medium" style={{ backgroundColor: ti?.color || '#64748b' }}>{ti?.nombre || '—'}</span>
                     <span className="text-xs text-stone-500 font-mono">{o.numero || `#${o.id}`}</span>
                   </div>
-                  <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: (st?.color || '#64748b') + '22', color: st?.color || '#64748b' }}>{st?.nombre || '—'}</span>
+                  <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: st.color + '22', color: st.color }}>{st.label}</span>
                 </div>
                 <div className="text-sm text-stone-900 font-semibold mb-0.5">{cli?.nombre || '—'}</div>
                 <div className="text-xs text-stone-500 mb-2">{o.equipo}</div>
@@ -51,7 +51,6 @@ export function DayDetailModal({ date, data, onClose, onEdit, onDelete, onAdd })
                 </div>
                 <div className="flex gap-2 mt-3 pt-2 border-t border-stone-200">
                   <button onClick={() => { onEdit(o, dayOrders.map(x => x.id)); onClose(); }} className="flex-1 py-1.5 text-xs rounded bg-white border border-stone-200 hover:bg-stone-100 text-stone-700 flex items-center justify-center gap-1"><Edit2 className="w-3 h-3" /> Abrir</button>
-                  <button onClick={() => { if (confirm('¿Eliminar esta OS?')) onDelete(o.id); }} className="px-3 py-1.5 text-xs rounded bg-red-50 border border-red-200 hover:bg-red-100 text-red-700"><Trash2 className="w-3 h-3" /></button>
                 </div>
               </div>
             );

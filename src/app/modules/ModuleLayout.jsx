@@ -19,7 +19,7 @@ const APP_BG = '#F7F7F4';
 
 export function ModuleLayout({ moduleId }) {
   const m = moduleById(moduleId);
-  const { data, loading, upsert, remove } = useStoreContext();
+  const { data, loading, upsert } = useStoreContext();
   const { user } = useAuth();
   const { nombre: empresaNombre, logo: empresaLogo } = useEmpresa();
   const {
@@ -57,9 +57,6 @@ export function ModuleLayout({ moduleId }) {
 
   const closePalette = useCallback(() => setPaletteOpen(false), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
-
-  // Cierra el sidebar móvil al cambiar de sub-vista.
-  useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
 
   // Sub-vistas visibles para el rol actual.
   const subviews = useMemo(
@@ -223,6 +220,7 @@ export function ModuleLayout({ moduleId }) {
                   key={s.id}
                   to={to}
                   end={!s.path}
+                  onClick={closeSidebar}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm mb-0.5 transition-colors"
                   style={{
                     background: active ? m.color + '15' : 'transparent',
@@ -252,7 +250,6 @@ export function ModuleLayout({ moduleId }) {
           data={data}
           onClose={closeDayDetail}
           onEdit={openOrder}
-          onDelete={(id) => remove('ordenes', id)}
           onAdd={(d) => { closeDayDetail(); openNewOrderForm(d); }}
         />
       )}

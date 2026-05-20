@@ -71,6 +71,15 @@ export const storage = {
   removeOT(id) {
     return request(`/ordenes-trabajo/${id}`, { method: 'DELETE' });
   },
+  // Avanzar el estado de una OT. `to` es el estado destino (validado server-side
+  // contra la tabla de transiciones permitidas). `reopen: true` solo para admin
+  // y solo cuando la OT está culminada.
+  transitionOT(id, payload) {
+    return request(`/ordenes-trabajo/${id}/transition`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
   uploadAdjunto(otId, files) {
     const form = new FormData();
     for (const f of files) form.append('files', f);

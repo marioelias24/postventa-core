@@ -4,7 +4,7 @@ import { useUI } from '@/app/UIContext';
 import { OrdersListView } from '../components/OrdersListView';
 
 export function OrdersListPage() {
-  const { data, remove } = useStoreContext();
+  const { data } = useStoreContext();
   const { openNewOrderForm } = useUI();
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,7 +16,6 @@ export function OrdersListPage() {
       onEdit={(o, siblingIds) =>
         navigate(`${o.id}`, { state: { siblingIds, from: location.pathname } })
       }
-      onDelete={(id) => remove('ordenes', id)}
       onAdd={() => openNewOrderForm()}
     />
   );

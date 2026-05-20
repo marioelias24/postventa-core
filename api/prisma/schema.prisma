@@ -115,59 +115,62 @@ model Prioridad {
 }
 
 model Orden {
-  id               Int      @id @default(autoincrement())
+  id                Int      @id @default(autoincrement())
   // Identificador legible de la orden. A partir de la sequence `orden.numero`
   // se autogenera al crear (ej.: "OS-2026-00042") cuando no se provee uno;
   // si el usuario lo escribe manualmente, se respeta el valor dado. No es
   // único en BD: una misma orden lógica puede partirse en varias visitas.
-  numero           String?
+  numero            String?
   // Identificador en un sistema externo (SAP, NetSuite, etc.). Editable
   // libremente, no se autogenera. Antes de 2026-05-17 esta información
   // vivía en el campo `numero` — migración aditiva movió los valores acá.
   referenciaExterna String?
-  fechaProgramada  String
-  horaInicio       String
-  duracionEstimada Float
-  equipo           String
-  descripcion      String?
-  notas            String?
-  fechaCompletada  String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  fechaProgramada   String
+  horaInicio        String
+  duracionEstimada  Float
+  equipo            String
+  descripcion       String?
+  notas             String?
+  // Workflow fijo de OS: programado → en_progreso → finalizado, con cancelado
+  // disponible como cierre alterno. Ya no depende del catálogo Estado.
+  estado            String   @default("programado")
+  fechaCompletada   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   // Todos los campos de selección son opcionales: una orden puede quedar sin
   // cliente / técnico / tipo / estado / prioridad. El bloqueo al borrar un
   // catálogo que está en uso se mantiene con onDelete: Restrict.
-  clienteId   Int?
-  cliente     Cliente?   @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  clienteId Int?
+  cliente   Cliente? @relation(fields: [clienteId], references: [id], onDelete: Restrict)
 
   // Técnicos asignados (varios por orden, estilo "tags"). `tecnicoIds` es la
   // fuente de verdad; `tecnicoId` se conserva como el técnico "principal"
   // (= tecnicoIds[0]) para mantener la relación/onDelete y compatibilidad.
-  tecnicoIds  Int[]      @default([])
-  tecnicoId   Int?
-  tecnico     Tecnico?   @relation(fields: [tecnicoId], references: [id], onDelete: Restrict)
+  tecnicoIds Int[]    @default([])
+  tecnicoId  Int?
+  tecnico    Tecnico? @relation(fields: [tecnicoId], references: [id], onDelete: Restrict)
 
-  tipoId      Int?
-  tipo        Tipo?      @relation(fields: [tipoId], references: [id], onDelete: Restrict)
-  estadoId    Int?
-  estado      Estado?    @relation(fields: [estadoId], references: [id], onDelete: Restrict)
-  prioridadId Int?
-  prioridad   Prioridad? @relation(fields: [prioridadId], references: [id], onDelete: Restrict)
+  tipoId         Int?
+  tipo           Tipo?      @relation(fields: [tipoId], references: [id], onDelete: Restrict)
+  estadoId       Int?
+  estadoCatalogo Estado?    @relation(fields: [estadoId], references: [id], onDelete: Restrict)
+  prioridadId    Int?
+  prioridad      Prioridad? @relation(fields: [prioridadId], references: [id], onDelete: Restrict)
 
   ordenesTrabajo OrdenTrabajo[]
 }
 
 model PlantillaChecklist {
-  id        Int               @id @default(autoincrement())
+  id        Int                 @id @default(autoincrement())
   nombre    String
   tipoId    Int?
-  tipo      Tipo?             @relation(fields: [tipoId], references: [id], onDelete: SetNull)
-  activo    Boolean           @default(true)
+  tipo      Tipo?               @relation(fields: [tipoId], references: [id], onDelete: SetNull)
+  activo    Boolean             @default(true)
   items     ItemPlantilla[]
   productos ProductoPlantilla[]
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
 }
 
 model ItemPlantilla {
@@ -192,10 +195,18 @@ model OrdenTrabajo {
   numero         String?
   ordenId        Int
   orden          Orden             @relation(fields: [ordenId], references: [id], onDelete: Restrict)
+  // Tiempos de ejecución reales (registrados automáticamente al transicionar):
+  //   horaInicioReal — se setea al pasar a 'iniciada' (la primera vez)
+  //   horaFinReal    — se setea al pasar a 'culminada'; se borra al reabrir
+  //   horasReales    — calculado: (horaFinReal - horaInicioReal) / 3600s.
+  //                    Editable manualmente para corregir si el técnico se
+  //                    olvidó de marcar inicio/fin a tiempo.
+  horaInicioReal DateTime?
+  horaFinReal    DateTime?
   horasReales    Float?
   firmaCliente   String?
   notas          String?
-  estado         String            @default("borrador")
+  estado         String            @default("programada")
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   checklist      ChecklistItemOT[]

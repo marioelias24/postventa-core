@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import {
   ChevronLeft, Trash2, Building2, MapPin, RefreshCw, Search, Locate,
-  ExternalLink, Navigation, CheckCircle2,
+  ExternalLink, Navigation, Mail, Phone,
 } from 'lucide-react';
 import { Field } from '@/shared/ui/Field';
 import { Section } from '@/shared/ui/Section';
 import { LocationPicker } from '@/shared/ui/LocationPicker';
+import {
+  FormFooter, FormHeader, FormPage, FormTabs, FormToolbar, HeaderFact,
+} from '@/shared/ui/FormView';
 import { inputCls } from '@/styles/tokens';
 import { useCan } from '@/app/permissions';
 import { BRAND } from '@/config/branding';
@@ -31,6 +34,7 @@ export function ClientDetailView({ client, isNew, onSave, onDelete, onBack }) {
   const [dirty, setDirty] = useState(isNew);
   const [geocoding, setGeocoding] = useState(false);
   const [mapMsg, setMapMsg] = useState('');
+  const [activeTab, setActiveTab] = useState('general');
 
   const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setDirty(true); };
   const setLatLng = (lat, lng) => {
@@ -87,28 +91,74 @@ export function ClientDetailView({ client, isNew, onSave, onDelete, onBack }) {
   const title = isNew ? 'Nuevo cliente' : form.nombre || 'Cliente';
 
   return (
-    <div className="space-y-4 pb-20">
-      <div className="flex items-center justify-between gap-3">
-        <button onClick={onBack} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-stone-200 hover:bg-stone-50 text-stone-700 text-sm">
-          <ChevronLeft className="w-4 h-4" /> Volver
-        </button>
-        <div className="text-center flex-1 min-w-0">
-          <h2 className="text-lg sm:text-xl font-bold text-stone-900 truncate font-serif">{title}</h2>
-          <p className="text-xs text-stone-500">{isNew ? 'Crear nuevo cliente' : 'Detalle de cliente'}</p>
-        </div>
-        {!isNew && canDelete ? (
-          <button
-            onClick={handleDelete}
-            className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200"
-            title="Eliminar"
-          >
-            <Trash2 className="w-4 h-4" />
+    <FormPage>
+      <FormToolbar
+        navigation={(
+          <button onClick={onBack} className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700 hover:bg-stone-50">
+            <ChevronLeft className="h-4 w-4" /> Volver
           </button>
-        ) : <div className="w-9" />}
-      </div>
+        )}
+        actions={(
+          <>
+            {canEdit && (
+              <button
+                onClick={save}
+                disabled={!dirty}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500 disabled:bg-stone-200 disabled:text-stone-400"
+              >
+                {isNew ? 'Crear cliente' : 'Guardar'}
+              </button>
+            )}
+            {!isNew && canDelete && (
+              <button
+                onClick={handleDelete}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
+                title="Eliminar"
+              >
+                <Trash2 className="h-4 w-4" /> Eliminar
+              </button>
+            )}
+          </>
+        )}
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 space-y-4">
+      <FormHeader
+        eyebrow={(
+          <span className="inline-flex items-center gap-1.5 font-medium uppercase">
+            <Building2 className="h-3.5 w-3.5 text-teal-600" />
+            Cliente
+          </span>
+        )}
+        title={title}
+        subtitle={isNew ? 'Crear nuevo cliente' : 'Ficha de cliente'}
+        badges={(
+          <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
+            form.contratoActivo
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              : 'border-stone-200 bg-stone-50 text-stone-500'
+          }`}>
+            {form.contratoActivo ? 'Contrato activo' : 'Sin contrato activo'}
+          </span>
+        )}
+        facts={(
+          <>
+            <HeaderFact icon={Building2} label="Contacto" value={form.contacto || 'Sin contacto'} detail={form.nombre || ''} />
+            <HeaderFact icon={Phone} label="Teléfono" value={form.telefono || 'Sin teléfono'} detail={form.email || ''} />
+            <HeaderFact icon={MapPin} label="Ubicación" value={form.direccion || 'Sin dirección'} detail={form.lat != null && form.lng != null ? `${form.lat}, ${form.lng}` : ''} />
+            <HeaderFact icon={Mail} label="Email" value={form.email || 'Sin email'} detail={form.contratoActivo ? 'Contrato activo' : ''} />
+          </>
+        )}
+      />
+
+      <FormTabs
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        tabs={[
+          { id: 'general', label: 'General', icon: Building2 },
+          { id: 'ubicacion', label: 'Ubicación', icon: MapPin },
+        ]}
+      >
+        {activeTab === 'general' && (
           <Section title="Datos del cliente" icon={Building2}>
             <Field label="Nombre / Razón social *">
               <input value={form.nombre} onChange={e => set('nombre', e.target.value)} className={inputCls} />
@@ -137,9 +187,9 @@ export function ClientDetailView({ client, isNew, onSave, onDelete, onBack }) {
               Contrato activo
             </label>
           </Section>
-        </div>
+        )}
 
-        <div className="space-y-4">
+        {activeTab === 'ubicacion' && (
           <Section title="Ubicación" icon={MapPin}>
             <Field label="Dirección">
               <textarea
@@ -216,30 +266,19 @@ export function ClientDetailView({ client, isNew, onSave, onDelete, onBack }) {
               </div>
             )}
           </Section>
-        </div>
-      </div>
+        )}
+      </FormTabs>
 
-      <div className="fixed bottom-0 left-0 right-0 backdrop-blur border-t border-stone-200 z-20" style={{ background: 'rgba(247,247,244,0.95)' }}>
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <div className="text-xs text-stone-500">
-            {savedAt && <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Cambios guardados</span>}
-            {!savedAt && dirty && <span className="text-amber-600">Hay cambios sin guardar</span>}
-          </div>
-          <div className="flex gap-2">
-            <button onClick={onBack} className="px-4 py-2 rounded-lg bg-white border border-stone-200 hover:bg-stone-50 text-stone-700 text-sm">Cerrar</button>
-            {canEdit && (
-              <button
-                onClick={save}
-                disabled={!dirty}
-                className="px-6 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 disabled:bg-stone-200 disabled:text-stone-400 text-white text-sm font-medium"
-              >
-                {isNew ? 'Crear cliente' : 'Guardar cambios'}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+      <FormFooter
+        dirty={dirty}
+        saved={savedAt}
+        onClose={onBack}
+        onSave={save}
+        saveLabel={isNew ? 'Crear cliente' : 'Guardar cambios'}
+        canSave={canEdit}
+        saveDisabled={!dirty}
+      />
+    </FormPage>
   );
 }
 

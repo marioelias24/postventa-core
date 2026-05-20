@@ -2,7 +2,7 @@
 // los mismos nombres (inputCls, tooltipStyle, etc.) para no romper imports.
 
 export const inputCls =
-  "w-full px-3 py-2 bg-white border border-stone-200 rounded-lg text-stone-900 text-sm focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 placeholder:text-stone-400";
+  "w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-stone-900 text-[15px] focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 placeholder:text-stone-400";
 
 export const cardCls =
   "bg-white border border-stone-200 rounded-xl";

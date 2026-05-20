@@ -75,7 +75,7 @@ export function EntityPicker({
         type="button"
         disabled={disabled}
         onClick={() => (open ? close() : setOpen(true))}
-        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-lg text-sm text-left flex items-center gap-2 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:opacity-50"
+        className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-[15px] text-left flex items-center gap-2 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:opacity-50"
       >
         <span className={`flex-1 truncate ${selected ? 'text-stone-900' : 'text-stone-400'}`}>
           {selected ? labelOf(selected) : placeholder}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, Users, Tag, Activity, Flag } from 'lucide-react';
+import { Building2, Users, Tag, Flag } from 'lucide-react';
 import { ClientesCatalog } from '@/features/clientes';
 import { CatalogManager } from './CatalogManager';
 
@@ -11,7 +11,6 @@ export function CatalogsView({ store }) {
     { k: 'clientes',    l: 'Clientes',    i: Building2 },
     { k: 'tecnicos',    l: 'Técnicos',    i: Users },
     { k: 'tipos',       l: 'Tipos',       i: Tag },
-    { k: 'estados',     l: 'Estados',     i: Activity },
     { k: 'prioridades', l: 'Prioridades', i: Flag }
   ];
 
@@ -51,19 +50,6 @@ export function CatalogsView({ store }) {
             { key: 'nombre', label: 'Nombre' },
             { key: 'color',  label: 'Color', type: 'color', default: '#14b8a6' },
             { key: 'activo', label: 'Activo', type: 'boolean', default: true }
-          ]}
-        />
-      )}
-
-      {tab === 'estados' && (
-        <CatalogManager
-          collection="estados" label="Estados de OS" items={[...data.estados].sort((a, b) => a.orden - b.orden)} store={store}
-          fields={[
-            { key: 'nombre',  label: 'Nombre' },
-            { key: 'color',   label: 'Color', type: 'color', default: '#64748b' },
-            { key: 'orden',   label: 'Orden', type: 'number', default: 1 },
-            { key: 'esFinal', label: 'Es estado final', type: 'boolean', default: false },
-            { key: 'activo',  label: 'Activo', type: 'boolean', default: true }
           ]}
         />
       )}
