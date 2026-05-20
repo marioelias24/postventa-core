@@ -13,6 +13,7 @@ import { ChartCard } from '@/shared/ui/ChartCard';
 import { inputCls, tooltipStyle } from '@/styles/tokens';
 import { fmt } from '@/shared/lib/dates';
 import { tecnicoIdsOf } from '@/shared/lib/orders';
+import { getOrderStatusMeta, isOrderFinalized, OS_STATUS_STEPS } from '@/shared/lib/orderStatus';
 import { useEmpresa } from '@/app/EmpresaContext';
 import { BRAND } from '@/config/branding';
 import { RankingDetailModal } from './RankingDetailModal';
@@ -69,9 +70,7 @@ export function ReportsView({ data }) {
     return data.ordenes.filter(o => o.fechaProgramada >= range.start && o.fechaProgramada <= range.end);
   }, [data.ordenes, range]);
 
-  // "Completada" = la orden está en un estado marcado como final (esFinal).
-  const finalEstadoIds = useMemo(() => new Set(data.estados.filter(s => s.esFinal).map(s => s.id)), [data.estados]);
-  const isCompletada = useCallback((o) => o.estadoId != null && finalEstadoIds.has(o.estadoId), [finalEstadoIds]);
+  const isCompletada = useCallback((o) => isOrderFinalized(o, data.estados), [data.estados]);
   const emergenciaId = data.tipos.find(t => /emergenc/i.test(t.nombre || ''))?.id;
 
   // KPIs principales
@@ -163,10 +162,11 @@ export function ReportsView({ data }) {
   }, [ordenesPorClienteFull]);
 
   // Distribución por estado (donut)
-  const porEstado = useMemo(() => ([
-    ...data.estados.map(s => ({ name: s.nombre, value: filtered.filter(o => o.estadoId === s.id).length, color: s.color })),
-    { name: 'Sin estado', value: filtered.filter(o => o.estadoId == null).length, color: '#475569' },
-  ].filter(x => x.value > 0)), [filtered, data.estados]);
+  const porEstado = useMemo(() => OS_STATUS_STEPS.map(status => ({
+    name: status.label,
+    value: filtered.filter(o => getOrderStatusMeta(o, data.estados).key === status.key).length,
+    color: status.color,
+  })).filter(x => x.value > 0), [filtered, data.estados]);
 
   // Tendencia de horas-hombre por día (multi-técnico multiplica).
   const tendenciaHoras = useMemo(() => {
@@ -532,7 +532,7 @@ export function ReportsView({ data }) {
             {[...filtered].sort((a,b) => a.fechaProgramada.localeCompare(b.fechaProgramada) || a.horaInicio.localeCompare(b.horaInicio)).map(o => {
               const c = data.clientes.find(x => x.id === o.clienteId);
               const t = data.tipos.find(x => x.id === o.tipoId);
-              const s = data.estados.find(x => x.id === o.estadoId);
+              const s = getOrderStatusMeta(o, data.estados);
               const tecNames = tecnicoIdsOf(o).map(id => data.tecnicos.find(x => x.id === id)?.nombre).filter(Boolean);
               return (
                 <tr key={o.id} style={{ borderBottom: '1px solid #ddd' }}>
@@ -541,7 +541,7 @@ export function ReportsView({ data }) {
                   <td style={{ padding: '4px' }}>{o.horaInicio}</td>
                   <td style={{ padding: '4px' }}>{c?.nombre || '—'}</td>
                   <td style={{ padding: '4px' }}>{t?.nombre || '—'}</td>
-                  <td style={{ padding: '4px' }}>{s?.nombre || '—'}</td>
+                  <td style={{ padding: '4px' }}>{s.label}</td>
                   <td style={{ padding: '4px' }}>{tecNames.length ? tecNames.join(', ') : '—'}</td>
                 </tr>
               );

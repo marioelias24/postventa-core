@@ -75,7 +75,7 @@ export function MultiEntityPicker({
 
   return (
     <div className="relative" ref={rootRef}>
-      <div className="w-full min-h-[2.5rem] px-2 py-1.5 bg-white border border-stone-200 rounded-lg flex flex-wrap items-center gap-1.5 text-sm">
+      <div className="w-full min-h-[2.75rem] px-2.5 py-2 bg-white border border-stone-300 rounded-lg flex flex-wrap items-center gap-1.5 text-[15px]">
         {selected.length === 0 && <span className="text-stone-400 px-1">{emptyText}</span>}
         {selected.map((i) => (
           <span key={i.id} className="inline-flex items-center gap-1 bg-teal-50 border border-teal-200 text-teal-800 rounded-full pl-2.5 pr-1 py-0.5 text-xs">

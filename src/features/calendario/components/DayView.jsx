@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Calendar as CalIcon, Plus, Users } from 'lucide-react';
 import { fmt } from '@/shared/lib/dates';
 import { tecnicoIdsOf } from '@/shared/lib/orders';
+import { getOrderStatusMeta, OS_STATUS_STEPS } from '@/shared/lib/orderStatus';
 
 // Tablero de planificación del día: eje de horas en horizontal, una fila por
 // técnico, las órdenes como bloques ubicados según hora de inicio y duración.
@@ -188,7 +189,7 @@ export function DayView({ refDate, ordersByDay, tipoMap, cliMap, tecMap, estadoM
                       const left = ((outside ? clamp(o._start, START_HOUR, END_HOUR - 0.5) : vStart) - START_HOUR) / SPAN * 100;
                       const width = (outside ? 0.5 : (vEnd - vStart)) / SPAN * 100;
                       const tipo = tipoMap[o.tipoId];
-                      const estado = estadoMap[o.estadoId];
+                      const estado = getOrderStatusMeta(o, Object.values(estadoMap || {}));
                       const cli = cliMap[o.clienteId];
                       const prio = prioMap[o.prioridadId];
                       const bg = tipo?.color || '#475569';
@@ -207,7 +208,7 @@ export function DayView({ refDate, ordersByDay, tipoMap, cliMap, tecMap, estadoM
                             backgroundColor: bg,
                             borderLeft: `3px solid ${estado?.color || 'rgba(255,255,255,0.5)'}`,
                           }}
-                          title={`${numLabel} · ${hhmm(o._start)}–${hhmm(o._end)} · ${cli?.nombre || 'sin cliente'} · ${o.equipo}${tecNames.length ? ' · ' + tecNames.join(', ') : ''}${estado ? ' · ' + estado.nombre : ''}${prio ? ' · ' + prio.nombre : ''}`}
+                          title={`${numLabel} · ${hhmm(o._start)}–${hhmm(o._end)} · ${cli?.nombre || 'sin cliente'} · ${o.equipo}${tecNames.length ? ' · ' + tecNames.join(', ') : ''} · ${estado.label}${prio ? ' · ' + prio.nombre : ''}`}
                         >
                           <div className="px-1.5 py-1 leading-tight h-full flex flex-col justify-center">
                             <div className="flex items-center gap-1 min-w-0">
@@ -215,7 +216,7 @@ export function DayView({ refDate, ordersByDay, tipoMap, cliMap, tecMap, estadoM
                               <span className="text-[10px] opacity-90 tabular-nums flex-shrink-0">{hhmm(o._start).slice(0, 5)}</span>
                             </div>
                             <div className="text-[11px] opacity-95 truncate">{cli?.nombre || o.equipo || '—'}</div>
-                            {estado && <div className="text-[10px] opacity-90 truncate">{estado.nombre}</div>}
+                            <div className="text-[10px] opacity-90 truncate">{estado.label}</div>
                           </div>
                         </button>
                       );
@@ -236,16 +237,14 @@ export function DayView({ refDate, ordersByDay, tipoMap, cliMap, tecMap, estadoM
         {tecnicoFilter === 'todos' && tecnicosActivos > 0 && (
           <span>{tecnicosConTrabajo}/{tecnicosActivos} técnicos con trabajo</span>
         )}
-        {Object.values(estadoMap).filter((s) => s?.activo).length > 0 && (
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-stone-400">Estados:</span>
-            {Object.values(estadoMap).filter((s) => s?.activo).sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)).map((s) => (
-              <span key={s.id} className="flex items-center gap-1.5">
-                <span className="w-2.5 h-3 rounded-sm" style={{ backgroundColor: s.color }} />{s.nombre}
-              </span>
-            ))}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-stone-400">Estados:</span>
+          {OS_STATUS_STEPS.map((s) => (
+            <span key={s.key} className="flex items-center gap-1.5">
+              <span className="w-2.5 h-3 rounded-sm" style={{ backgroundColor: s.color }} />{s.label}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );

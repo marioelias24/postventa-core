@@ -1,11 +1,13 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useStoreContext } from '@/store/StoreContext';
+import { useUI } from '@/app/UIContext';
 import { OrderDetailView } from '../components/OrderDetailView';
 
 export function OrderDetailPage() {
   const { id } = useParams();
   const numericId = Number(id);
-  const { data, upsert, remove } = useStoreContext();
+  const { data, upsert } = useStoreContext();
+  const { openNewOrderForm } = useUI();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -42,19 +44,14 @@ export function OrderDetailPage() {
     else navigate(from || '..', { relative: 'path' });
   };
 
-  const handleDelete = (orderId) => {
-    remove('ordenes', orderId);
-    navigate(from || '..', { relative: 'path' });
-  };
-
   return (
     <OrderDetailView
       key={numericId}
       orderId={numericId}
       data={data}
       onSave={upsert}
-      onDelete={handleDelete}
       onBack={goBack}
+      onNew={() => openNewOrderForm()}
       onPrev={prevId != null ? () => goTo(prevId) : null}
       onNext={nextId != null ? () => goTo(nextId) : null}
       pagerInfo={idx >= 0 && list.length > 1 ? { index: idx, total: list.length } : null}

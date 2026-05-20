@@ -6,7 +6,7 @@
 //
 //   users:manage      → crear/eliminar/resetear/cambiar rol de usuarios
 //   empresa:edit      → editar datos y logo de la empresa
-//   catalogo:edit     → crear/editar/eliminar técnicos/tipos/estados/prioridades
+//   catalogo:edit     → crear/editar/eliminar técnicos/tipos/prioridades
 //   orden:create      → crear órdenes
 //   orden:edit        → editar órdenes existentes
 //   orden:delete      → eliminar órdenes

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardList } from 'lucide-react';
 import { relativeTime, orderActivityDate } from './helpers';
+import { getOrderStatusMeta } from '@/shared/lib/orderStatus';
 
 // Las 6 últimas órdenes con actividad (updatedAt > fechaCompletada > fechaProgramada).
 export function RecentActivity({ data }) {
@@ -9,21 +10,23 @@ export function RecentActivity({ data }) {
 
   const items = useMemo(() => {
     const cliMap = Object.fromEntries((data.clientes || []).map((c) => [c.id, c]));
-    const stMap = Object.fromEntries((data.estados || []).map((s) => [s.id, s]));
 
     return [...(data.ordenes || [])]
       .map((o) => ({ o, when: orderActivityDate(o) }))
       .filter((x) => !!x.when)
       .sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime())
       .slice(0, 6)
-      .map(({ o, when }) => ({
-        id: o.id,
-        numero: o.numero || `#${o.id}`,
-        cliente: cliMap[o.clienteId]?.nombre || 'Cliente —',
-        estado: stMap[o.estadoId]?.nombre || 'Sin estado',
-        estadoColor: stMap[o.estadoId]?.color || '#64748b',
-        when,
-      }));
+      .map(({ o, when }) => {
+        const status = getOrderStatusMeta(o, data.estados || []);
+        return {
+          id: o.id,
+          numero: o.numero || `#${o.id}`,
+          cliente: cliMap[o.clienteId]?.nombre || 'Cliente —',
+          estado: status.label,
+          estadoColor: status.color,
+          when,
+        };
+      });
   }, [data.ordenes, data.clientes, data.estados]);
 
   return (

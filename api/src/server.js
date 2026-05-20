@@ -30,9 +30,14 @@ const collectionMap = {
 };
 
 const IN_USE_MESSAGE = 'No se puede eliminar: este elemento está siendo utilizado en otros registros. Si ya no lo necesitas, considera archivarlo (marcarlo como inactivo) en su lugar.';
+const OS_ESTADOS = new Set(['programado', 'en_progreso', 'finalizado', 'cancelado']);
+
+function normalizeOSEstado(value) {
+  return OS_ESTADOS.has(value) ? value : 'programado';
+}
 
 // Mapeo colección → acción de permiso por verbo. Los catálogos (técnicos,
-// tipos, estados, prioridades) se agrupan bajo 'catalogo:edit' porque
+// tipos y prioridades se agrupan bajo 'catalogo:edit' porque
 // usualmente quien los administra es el mismo perfil (admin/supervisor).
 const COLLECTION_PERMS = {
   ordenes:     { write: 'orden:edit',    create: 'orden:create',  delete: 'orden:delete' },
@@ -264,6 +269,17 @@ app.post('/api/ordenes-trabajo', requirePermission('ot:edit'), async (req, res, 
       return res.status(403).json({ error: 'No tienes permiso para esta acción.' });
     }
 
+    // Si la OT a editar está culminada, bloqueamos cambios excepto cuando
+    // sea un admin haciendo un reset explícito vía /transition. En el POST
+    // genérico devolvemos 409 para evitar guardar accidentalmente.
+    if (isUp) {
+      const current = await prisma.ordenTrabajo.findUnique({ where: { id }, select: { estado: true } });
+      if (!current) return res.status(404).json({ error: 'OT no encontrada' });
+      if (current.estado === 'culminada') {
+        return res.status(409).json({ error: 'La OT está culminada y no se puede editar. Reabrir desde el detalle (solo admin).' });
+      }
+    }
+
     const result = await prisma.$transaction(async (tx) => {
       let ot;
       if (isUp) {
@@ -271,8 +287,12 @@ app.post('/api/ordenes-trabajo', requirePermission('ot:edit'), async (req, res, 
           horasReales: horasReales != null ? Number(horasReales) : null,
           firmaCliente: firmaCliente ? String(firmaCliente) : null,
           notas: notas ? String(notas) : null,
-          estado: estado || 'borrador',
+          // El estado solo se cambia vía /transition (workflow controlado).
+          // En el update genérico lo respetamos si llega pero no es lo normal.
+          estado: estado || undefined,
         };
+        // Limpiamos `undefined` para que Prisma no toque el campo.
+        if (base.estado === undefined) delete base.estado;
         ot = await tx.ordenTrabajo.update({ where: { id }, data: base });
         await tx.checklistItemOT.deleteMany({ where: { ordenTrabajoId: id } });
         await tx.materialOT.deleteMany({ where: { ordenTrabajoId: id } });
@@ -287,7 +307,8 @@ app.post('/api/ordenes-trabajo', requirePermission('ot:edit'), async (req, res, 
             horasReales: horasReales != null ? Number(horasReales) : null,
             firmaCliente: firmaCliente ? String(firmaCliente) : null,
             notas: notas ? String(notas) : null,
-            estado: estado || 'borrador',
+            // Toda OT nueva arranca en 'programada' (workflow nuevo).
+            estado: 'programada',
           },
         });
 
@@ -362,6 +383,95 @@ app.post('/api/ordenes-trabajo', requirePermission('ot:edit'), async (req, res, 
     res.json(result);
   } catch (err) {
     if (err?.code === 'P2025') return res.status(404).json({ error: 'Not found' });
+    next(err);
+  }
+});
+
+// Cambio de estado de una OT siguiendo el workflow programada→iniciada→culminada.
+// `reopen=true` solo lo puede usar admin para volver una culminada a iniciada.
+//
+//   programada → iniciada            (cualquiera con ot:edit)
+//   iniciada   → culminada           (cualquiera con ot:edit)
+//   culminada  → iniciada (reopen)   (admin: users:manage)
+app.post('/api/ordenes-trabajo/:id/transition', requirePermission('ot:edit'), async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+
+    const { to, reopen } = req.body || {};
+    const current = await prisma.ordenTrabajo.findUnique({ where: { id }, select: { estado: true } });
+    if (!current) return res.status(404).json({ error: 'OT no encontrada' });
+
+    // Tabla de transiciones permitidas. El cliente envía `to` (estado destino)
+    // y validamos contra `current.estado`. `reopen` requiere admin.
+    const allowed = {
+      programada: ['iniciada'],
+      iniciada:   ['culminada'],
+      culminada:  [],
+    };
+
+    if (reopen) {
+      if (current.estado !== 'culminada') {
+        return res.status(409).json({ error: 'Solo se puede reabrir una OT culminada.' });
+      }
+      if (!hasPermission(req.user?.role, 'users:manage')) {
+        return res.status(403).json({ error: 'Solo administrador puede reabrir una OT culminada.' });
+      }
+      // Reabrir: vuelve a 'iniciada' y borra horaFinReal (el trabajo continúa).
+      // No tocamos horasReales (queda como referencia del cálculo previo); al
+      // culminar otra vez se recalcula con la fecha nueva vs el inicio original.
+      const ot = await prisma.ordenTrabajo.update({
+        where: { id },
+        data: { estado: 'iniciada', horaFinReal: null },
+        include: { checklist: { orderBy: { orden: 'asc' } }, materiales: true, adjuntos: true, orden: true },
+      });
+      return res.json(ot);
+    }
+
+    if (!allowed[current.estado]?.includes(to)) {
+      return res.status(409).json({
+        error: `Transición no permitida: ${current.estado} → ${to}`,
+      });
+    }
+
+    // Datos a actualizar según la transición. Capturamos timestamps reales
+    // del momento del click para calcular el tiempo trabajado.
+    const now = new Date();
+    const data = { estado: to };
+
+    if (to === 'iniciada') {
+      // Solo seteamos horaInicioReal la PRIMERA vez. Si la OT vuelve a
+      // 'iniciada' tras una reapertura, mantenemos el inicio original.
+      const full = await prisma.ordenTrabajo.findUnique({
+        where: { id },
+        select: { horaInicioReal: true },
+      });
+      if (!full?.horaInicioReal) data.horaInicioReal = now;
+    } else if (to === 'culminada') {
+      data.horaFinReal = now;
+      // Calcular horasReales = (fin - inicio) / 1h. Solo si tenemos un inicio
+      // registrado — si la OT es vieja (sin horaInicioReal) no recalculamos
+      // y respetamos lo que ya estuviera (manual o null).
+      const full = await prisma.ordenTrabajo.findUnique({
+        where: { id },
+        select: { horaInicioReal: true },
+      });
+      if (full?.horaInicioReal) {
+        const diffMs = now.getTime() - new Date(full.horaInicioReal).getTime();
+        const horas = Math.max(0, diffMs / 3_600_000);
+        // Redondear a 2 decimales para que no aparezcan 1.43218973h.
+        data.horasReales = Math.round(horas * 100) / 100;
+      }
+    }
+
+    const ot = await prisma.ordenTrabajo.update({
+      where: { id },
+      data,
+      include: { checklist: { orderBy: { orden: 'asc' } }, materiales: true, adjuntos: true, orden: true },
+    });
+    res.json(ot);
+  } catch (err) {
+    if (err?.code === 'P2025') return res.status(404).json({ error: 'OT no encontrada' });
     next(err);
   }
 });
@@ -560,6 +670,17 @@ app.post('/api/:collection', async (req, res, next) => {
         }
       }
 
+      // Workflow fijo de OS. `estadoId` queda como legado para datos viejos,
+      // pero el estado operativo se guarda en `estado`.
+      if (!isUpdate || rest.estado !== undefined) {
+        rest.estado = normalizeOSEstado(rest.estado);
+        if (rest.estado === 'finalizado') {
+          if (!rest.fechaCompletada) rest.fechaCompletada = new Date().toISOString().slice(0, 10);
+        } else {
+          rest.fechaCompletada = null;
+        }
+      }
+
       // Técnicos asignados (tags): normalizar a enteros únicos y derivar el
       // técnico "principal" (tecnicoId = tecnicoIds[0] ?? null) para la relación.
       const raw = Array.isArray(rest.tecnicoIds)
@@ -634,6 +755,83 @@ async function backfillTecnicoIds() {
 
 const port = process.env.PORT || 3000;
 
+// Renombrado de estados de OrdenTrabajo: viejo workflow (borrador/en_progreso/
+// completada) → nuevo workflow (programada/iniciada/culminada). Idempotente.
+async function migrateOTEstados() {
+  try {
+    const mapping = [
+      ['borrador',    'programada'],
+      ['en_progreso', 'iniciada'],
+      ['completada',  'culminada'],
+    ];
+    let total = 0;
+    for (const [from, to] of mapping) {
+      const n = await prisma.ordenTrabajo.updateMany({
+        where: { estado: from },
+        data:  { estado: to },
+      });
+      total += n.count;
+    }
+    if (total) console.log(`[api] migrate OT estados: ${total} OTs actualizadas`);
+  } catch (err) {
+    console.error('[api] migrate OT estados falló (se ignora):', err.message);
+  }
+}
+
+// Workflow fijo de Orden de Servicio. Agrega/backfillea la columna `estado`
+// desde el catálogo antiguo Estado cuando exista; luego la UI deja de depender
+// de ese catálogo.
+async function migrateOrdenEstados() {
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Orden" ADD COLUMN IF NOT EXISTS "estado" TEXT`);
+    await prisma.$executeRawUnsafe(`
+      UPDATE "Orden" o
+         SET "estado" = CASE
+           WHEN lower(unaccent(coalesce(e."nombre", ''))) LIKE '%cancel%' THEN 'cancelado'
+           WHEN e."esFinal" = true
+             OR lower(unaccent(coalesce(e."nombre", ''))) LIKE '%final%'
+             OR lower(unaccent(coalesce(e."nombre", ''))) LIKE '%complet%'
+             OR lower(unaccent(coalesce(e."nombre", ''))) LIKE '%culmin%' THEN 'finalizado'
+           WHEN lower(unaccent(coalesce(e."nombre", ''))) LIKE '%progreso%'
+             OR lower(unaccent(coalesce(e."nombre", ''))) LIKE '%inici%'
+             OR lower(unaccent(coalesce(e."nombre", ''))) LIKE '%proceso%' THEN 'en_progreso'
+           ELSE 'programado'
+         END
+        FROM "Estado" e
+       WHERE o."estadoId" = e."id"
+         AND (o."estado" IS NULL OR o."estado" = '')
+    `).catch(async () => {
+      await prisma.$executeRawUnsafe(`
+        UPDATE "Orden" o
+           SET "estado" = CASE
+             WHEN lower(coalesce(e."nombre", '')) LIKE '%cancel%' THEN 'cancelado'
+             WHEN e."esFinal" = true
+               OR lower(coalesce(e."nombre", '')) LIKE '%final%'
+               OR lower(coalesce(e."nombre", '')) LIKE '%complet%'
+               OR lower(coalesce(e."nombre", '')) LIKE '%culmin%' THEN 'finalizado'
+             WHEN lower(coalesce(e."nombre", '')) LIKE '%progreso%'
+               OR lower(coalesce(e."nombre", '')) LIKE '%inici%'
+               OR lower(coalesce(e."nombre", '')) LIKE '%proceso%' THEN 'en_progreso'
+             ELSE 'programado'
+           END
+          FROM "Estado" e
+         WHERE o."estadoId" = e."id"
+           AND (o."estado" IS NULL OR o."estado" = '')
+      `);
+    });
+    await prisma.$executeRawUnsafe(`
+      UPDATE "Orden"
+         SET "estado" = 'programado'
+       WHERE "estado" IS NULL
+          OR "estado" NOT IN ('programado', 'en_progreso', 'finalizado', 'cancelado')
+    `);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Orden" ALTER COLUMN "estado" SET DEFAULT 'programado'`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Orden" ALTER COLUMN "estado" SET NOT NULL`);
+  } catch (err) {
+    console.error('[api] migrate Orden estados falló (se ignora):', err.message);
+  }
+}
+
 // Boot orquestado: corre los backfills/seeds idempotentes en serie ANTES
 // de aceptar requests (excepto el listen, que arranca igual). Si alguno
 // falla queda logueado pero no bloquea el API.
@@ -641,6 +839,8 @@ async function bootInit() {
   await backfillTecnicoIds();
   await seedDefaultSequences().catch(err => console.error('[api] seedDefaultSequences:', err.message));
   await backfillReferenciaExterna();
+  await migrateOrdenEstados();
+  await migrateOTEstados();
 }
 
 bootInit().finally(() => {

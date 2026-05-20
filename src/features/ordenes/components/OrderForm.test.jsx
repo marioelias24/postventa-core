@@ -47,6 +47,7 @@ describe('OrderForm', () => {
     expect(callArgs[1].tecnicoIds).toEqual([]);
     expect(callArgs[1].tipoId).toBeNull();
     expect(callArgs[1].estadoId).toBeNull();
+    expect(callArgs[1].estado).toBe('programado');
     expect(callArgs[1].prioridadId).toBeNull();
     // El número de orden no se autogenera (viene de SAP); vacío al crear.
     expect(callArgs[1].id).toBeUndefined();

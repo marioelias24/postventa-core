@@ -7,6 +7,7 @@ import { inputCls } from '@/styles/tokens';
 import { fmt } from '@/shared/lib/dates';
 import { makeQuickCreate } from '@/shared/lib/catalogs';
 import { tecnicoIdsOf } from '@/shared/lib/orders';
+import { isOrderFinalized, normalizeOrderStatus, OS_STATUS } from '@/shared/lib/orderStatus';
 
 export function OrderForm({ order, defaultDate, defaults, data, onSave, onClose }) {
   const isEdit = !!order?.id;
@@ -23,6 +24,7 @@ export function OrderForm({ order, defaultDate, defaults, data, onSave, onClose 
     tecnicoIds: [],
     tipoId: null,
     estadoId: null,
+    estado: OS_STATUS.PROGRAMADO,
     prioridadId: null,
     fechaProgramada: defaultDate ? fmt(defaultDate) : fmt(new Date()),
     horaInicio: '08:00',
@@ -37,7 +39,6 @@ export function OrderForm({ order, defaultDate, defaults, data, onSave, onClose 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const cliente = data.clientes.find(c => c.id === form.clienteId);
 
-  const estadosOpts = [...data.estados].filter(s => s.activo).sort((a, b) => a.orden - b.orden);
   const prioridadesOpts = [...data.prioridades].sort((a, b) => a.nivel - b.nivel);
   const tiposOpts = data.tipos.filter(t => t.activo);
   const tecnicosOpts = data.tecnicos.filter(t => t.activo);
@@ -45,13 +46,13 @@ export function OrderForm({ order, defaultDate, defaults, data, onSave, onClose 
   const submit = () => {
     if (!form.equipo.trim()) return alert('Indica al menos el equipo / activo de la orden.');
 
-    const estadoSel = data.estados.find(s => s.id === form.estadoId);
     const payload = { ...form };
+    const estado = normalizeOrderStatus(payload, data.estados);
+    payload.estado = estado;
     payload.numero = (payload.numero || '').trim();
     payload.referenciaExterna = (payload.referenciaExterna || '').trim();
-    // Cualquier estado marcado como "final" deja registrada la fecha de cierre.
-    if (estadoSel?.esFinal && !payload.fechaCompletada) payload.fechaCompletada = fmt(new Date());
-    if (!estadoSel?.esFinal) payload.fechaCompletada = null;
+    if (isOrderFinalized(estado) && !payload.fechaCompletada) payload.fechaCompletada = fmt(new Date());
+    if (!isOrderFinalized(estado)) payload.fechaCompletada = null;
     onSave('ordenes', payload);
     onClose();
   };
@@ -160,28 +161,19 @@ export function OrderForm({ order, defaultDate, defaults, data, onSave, onClose 
             <Field label="Duración (h)"><input type="number" min="0.5" step="0.5" value={form.duracionEstimada} onChange={e => set('duracionEstimada', parseFloat(e.target.value) || 1)} className={inputCls} /></Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Estado">
-              <EntityPicker
-                value={form.estadoId}
-                items={estadosOpts}
-                onChange={v => set('estadoId', v)}
-                onCreate={makeQuickCreate(onSave, 'estados')}
-                placeholder="— Sin estado —"
-                emptyLabel="— Sin estado —"
-              />
-            </Field>
-            <Field label="Prioridad">
-              <EntityPicker
-                value={form.prioridadId}
-                items={prioridadesOpts}
-                onChange={v => set('prioridadId', v)}
-                onCreate={makeQuickCreate(onSave, 'prioridades')}
-                placeholder="— Sin prioridad —"
-                emptyLabel="— Sin prioridad —"
-              />
-            </Field>
-          </div>
+          {/* El estado NO se elige al crear: queda null y se asigna después
+              desde el stepper del detalle. Esto evita que el usuario marque
+              "Completada" por error apenas se crea. */}
+          <Field label="Prioridad">
+            <EntityPicker
+              value={form.prioridadId}
+              items={prioridadesOpts}
+              onChange={v => set('prioridadId', v)}
+              onCreate={makeQuickCreate(onSave, 'prioridades')}
+              placeholder="— Sin prioridad —"
+              emptyLabel="— Sin prioridad —"
+            />
+          </Field>
 
           <Field label="Descripción del trabajo"><textarea value={form.descripcion} onChange={e => set('descripcion', e.target.value)} className={inputCls + ' h-20'} /></Field>
           <Field label="Notas / observaciones"><textarea value={form.notas} onChange={e => set('notas', e.target.value)} className={inputCls + ' h-16'} /></Field>

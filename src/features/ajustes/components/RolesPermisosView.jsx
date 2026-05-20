@@ -24,7 +24,7 @@ const ACCIONES = [
     ],
   },
   {
-    grupo: 'Catálogos (técnicos, tipos, estados, prioridades)',
+    grupo: 'Catálogos (técnicos, tipos, prioridades)',
     items: [
       { id: 'catalogo:edit', label: 'Crear / editar / eliminar' },
     ],
