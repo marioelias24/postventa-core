@@ -17,6 +17,7 @@ import {
 import {
   getNextNumber, seedDefaultSequences, backfillReferenciaExterna,
 } from './sequences.js';
+import { migrateOrdenEstados } from './migrations.js';
 
 const prisma = new PrismaClient();
 
@@ -775,60 +776,6 @@ async function migrateOTEstados() {
     if (total) console.log(`[api] migrate OT estados: ${total} OTs actualizadas`);
   } catch (err) {
     console.error('[api] migrate OT estados falló (se ignora):', err.message);
-  }
-}
-
-// Workflow fijo de Orden de Servicio. Agrega/backfillea la columna `estado`
-// desde el catálogo antiguo Estado cuando exista; luego la UI deja de depender
-// de ese catálogo.
-async function migrateOrdenEstados() {
-  try {
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Orden" ADD COLUMN IF NOT EXISTS "estado" TEXT`);
-    await prisma.$executeRawUnsafe(`
-      UPDATE "Orden" o
-         SET "estado" = CASE
-           WHEN lower(unaccent(coalesce(e."nombre", ''))) LIKE '%cancel%' THEN 'cancelado'
-           WHEN e."esFinal" = true
-             OR lower(unaccent(coalesce(e."nombre", ''))) LIKE '%final%'
-             OR lower(unaccent(coalesce(e."nombre", ''))) LIKE '%complet%'
-             OR lower(unaccent(coalesce(e."nombre", ''))) LIKE '%culmin%' THEN 'finalizado'
-           WHEN lower(unaccent(coalesce(e."nombre", ''))) LIKE '%progreso%'
-             OR lower(unaccent(coalesce(e."nombre", ''))) LIKE '%inici%'
-             OR lower(unaccent(coalesce(e."nombre", ''))) LIKE '%proceso%' THEN 'en_progreso'
-           ELSE 'programado'
-         END
-        FROM "Estado" e
-       WHERE o."estadoId" = e."id"
-         AND (o."estado" IS NULL OR o."estado" = '')
-    `).catch(async () => {
-      await prisma.$executeRawUnsafe(`
-        UPDATE "Orden" o
-           SET "estado" = CASE
-             WHEN lower(coalesce(e."nombre", '')) LIKE '%cancel%' THEN 'cancelado'
-             WHEN e."esFinal" = true
-               OR lower(coalesce(e."nombre", '')) LIKE '%final%'
-               OR lower(coalesce(e."nombre", '')) LIKE '%complet%'
-               OR lower(coalesce(e."nombre", '')) LIKE '%culmin%' THEN 'finalizado'
-             WHEN lower(coalesce(e."nombre", '')) LIKE '%progreso%'
-               OR lower(coalesce(e."nombre", '')) LIKE '%inici%'
-               OR lower(coalesce(e."nombre", '')) LIKE '%proceso%' THEN 'en_progreso'
-             ELSE 'programado'
-           END
-          FROM "Estado" e
-         WHERE o."estadoId" = e."id"
-           AND (o."estado" IS NULL OR o."estado" = '')
-      `);
-    });
-    await prisma.$executeRawUnsafe(`
-      UPDATE "Orden"
-         SET "estado" = 'programado'
-       WHERE "estado" IS NULL
-          OR "estado" NOT IN ('programado', 'en_progreso', 'finalizado', 'cancelado')
-    `);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Orden" ALTER COLUMN "estado" SET DEFAULT 'programado'`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Orden" ALTER COLUMN "estado" SET NOT NULL`);
-  } catch (err) {
-    console.error('[api] migrate Orden estados falló (se ignora):', err.message);
   }
 }
 

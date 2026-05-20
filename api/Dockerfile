@@ -18,5 +18,9 @@ COPY src ./src
 
 EXPOSE 3000
 
-# En el arranque: aplica el schema a la DB y luego levanta el server
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node src/server.js"]
+# En el arranque, en orden:
+#  1. premigrate: backfill de datos que DEBE correr con el schema viejo
+#     todavía vivo (ej. estado de Orden desde el catálogo). Ver migrations.js.
+#  2. db push: sincroniza el schema (queda no-op para lo ya migrado).
+#  3. server: levanta el API.
+CMD ["sh", "-c", "node src/premigrate.js && npx prisma db push --accept-data-loss && node src/server.js"]
